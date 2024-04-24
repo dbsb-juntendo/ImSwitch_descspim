@@ -1,0 +1,28 @@
+{
+  "detectors": {
+    "whatever": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "ThorCamSciManager",
+      "managerProperties": {
+        "cameraListIndex": 1,
+        "thorcamsci": {
+          "exposure": 50,
+          "gain": 0,
+          "blacklevel": 100,
+          "trigger_source": 0
+        }
+      },
+      "forAcquisition": true,
+      "forFocusLock": true
+    }
+  }
+  ,
+    "availableWidgets": [
+      "Settings",
+      "View",
+      "Recording",
+      "Image"
+    ]
+  }
+  
