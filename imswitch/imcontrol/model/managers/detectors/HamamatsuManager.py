@@ -124,6 +124,7 @@ class HamamatsuManager(DetectorManager):
         self._camera.setPropertyValue('exposure_time', time)
 
     def _setTriggerSource(self, source):
+        print('this is the source', source)
         if source == 'Internal trigger':
             self._performSafeCameraAction(
                 lambda: self._camera.setPropertyValue('trigger_source', 1)

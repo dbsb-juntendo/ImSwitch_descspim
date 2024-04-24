@@ -158,7 +158,7 @@ class SettingsController(ImConWidgetController):
 
         # Adjust frame
         params = self.allParams[detector.name]
-        binning = int(params.binning.value())
+        binning = 1#int(params.binning.value())
         width = params.width.value()
         height = params.height.value()
         x0 = params.x0.value()
@@ -307,7 +307,7 @@ class SettingsController(ImConWidgetController):
     def updateBinning(self):
         """ Update a new binning to the detector. """
         self.getDetectorManagerFrameExecFunc()(
-            lambda c: c.setBinning(int(self.allParams[c.name].binning.value()))
+            lambda c: c.setBinning(1)#int(self.allParams[c.name].binning.value()))
         )
         self.updateSharedAttrs()
 
@@ -370,6 +370,7 @@ class SettingsController(ImConWidgetController):
             self.ROIchanged()
 
         else:
+            frameMode='Full chip'
             if frameMode == 'Full chip':
                 fullChipShape = detector.fullShape
                 params.x0.setValue(0)
