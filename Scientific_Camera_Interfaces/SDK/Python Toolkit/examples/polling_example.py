@@ -15,6 +15,8 @@ except ImportError:
 
 import numpy as np
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK, OPERATION_MODE
+import os
+os.add_dll_directory(os.path.abspath('./imswitch/imcontrol/model/interfaces/thorlabs_tsi_sdk/dll/')) # add the location of the SDK DLLs to the PATH
 
 NUM_FRAMES = 10  # adjust to the desired number of frames
 
@@ -26,8 +28,8 @@ with TLCameraSDK() as sdk:
 
     with sdk.open_camera(available_cameras[0]) as camera:
         camera.exposure_time_us = 11000  # set exposure to 11 ms
-        camera.frames_per_trigger_zero_for_unlimited = 0  # start camera in continuous mode
-        camera.image_poll_timeout_ms = 1000  # 1 second polling timeout
+        camera.frames_per_trigger_zero_for_unlimited = 1  # start camera in continuous mode
+        camera.image_poll_timeout_ms = 10000  # 1 second polling timeout
         old_roi = camera.roi  # store the current roi
         """
         uncomment the line below to set a region of interest (ROI) on the camera
@@ -48,6 +50,7 @@ with TLCameraSDK() as sdk:
         camera.issue_software_trigger()
 
         for i in range(NUM_FRAMES):
+            print(i)
             frame = camera.get_pending_frame_or_null()
             if frame is not None:
                 print("frame #{} received!".format(frame.frame_count))

@@ -26,7 +26,7 @@ class ThorCamSciManager(DetectorManager):
             # returning back to default pixelsize
             pixelSize = 1
         
-        # Get camera object (either mock or real)
+        # Get camera object (either mock or real) from thorcamscicamera.py in model/interfaces
         self._camera = self._getThorcamObj(cameraId, binning)
         
         # set the shape (important for the recording manager)
@@ -54,13 +54,17 @@ class ThorCamSciManager(DetectorManager):
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
             'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
-                                                valueUnits='µm', editable=True),
+                                                valueUnits='µm', editable=False),
+            "operation_mode": DetectorNumberParameter(group='Misc',
+                                                    value=0, valueUnits='arb.u.',
+                                                    editable=True),
+            'trigger_polarity': DetectorNumberParameter(group='Misc',
+                                                    value=0, valueUnits='arb.u.',
+                                                    editable=True),
             "trigger_source": DetectorNumberParameter(group='Misc',
                                                     value=0, valueUnits='arb.u.',
                                                     editable=True),
-            "operation_mode": DetectorNumberParameter(group='Misc',
-                                                    value=0, valueUnits='',
-                                                    editable=True),
+                                        
             }            
 
         # reading parameters from disk and write them to camrea
@@ -82,14 +86,23 @@ class ThorCamSciManager(DetectorManager):
                          model=model, parameters=parameters, actions=actions, croppable=True)
 
 
-    def _updatePropertiesFromCamera(self):              # when is this ever called??
-        print('when is this called? line 91 manager')
+    def _updatePropertiesFromCamera(self):
         self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
         self.setParameter('Internal frame interval',
                           self._camera.getPropertyValue('internal_frame_interval')[0])
         self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
         self.setParameter('Internal frame rate',
                           self._camera.getPropertyValue('internal_frame_rate')[0])
+        
+        # Max: not sure about this, what does this do here?
+        operation_mode = self._camera.getPropertyValue('operation_mode')
+        self.setParameter('Operation mode', operation_mode)
+        if operation_mode == 0:
+            self.setParameter('operation_mode', 0)
+        elif operation_mode == 1:
+            self.setParameter('operation_mode', 1)
+        elif operation_mode == 2:
+            self.setParameter('operation_mode', 2)
 
         triggerSource = self._camera.getPropertyValue('trigger_source')
         print('trigger source is, line 91 manager', triggerSource)
@@ -133,10 +146,9 @@ class ThorCamSciManager(DetectorManager):
         value = self._camera.getPropertyValue(name)
         return value
 
-
+    # what does this do?
     def setTriggerSource(self, source):
         """Sets the trigger source and returns the value."""
-        print("XXXXXXX when is this called? line 139 manager", source)
         if source == 0:
             self._performSafeCameraAction(
                 lambda: self._camera.setPropertyValue('trigger_source', 0)

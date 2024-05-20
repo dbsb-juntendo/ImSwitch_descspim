@@ -23,7 +23,7 @@ def configure_path():
 
 configure_path()
 
-from thorlabs_tsi_sdk.tl_camera import TLCameraSDK, OPERATION_MODE
+from thorlabs_tsi_sdk.tl_camera import TLCameraSDK, OPERATION_MODE, TRIGGER_POLARITY
 from thorlabs_tsi_sdk.tl_mono_to_color_processor import MonoToColorProcessorSDK
 from thorlabs_tsi_sdk.tl_camera_enums import SENSOR_TYPE
 
@@ -32,8 +32,15 @@ TAG_EXPOSURE = 32769
 
 
 class CameraThorCamSci:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1, 
-                 operation_mode=0, trigger_polarity=0):
+    def __init__(self,cameraNo=None, 
+                 exposure_time = 10000, 
+                 gain = 0, 
+                 frame_rate=-1, 
+                 blacklevel=100, 
+                 binning=1, 
+                 operation_mode = 0, 
+                 trigger_polarity = 0):
+        
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
         print('interface is called')
@@ -53,39 +60,8 @@ class CameraThorCamSci:
         self.preview_height = 600
         self.frame_rate = frame_rate 
         self.cameraNo = cameraNo
-
-        # for triggering
-        self.operation_mode = operation_mode
         self.trigger_polarity = trigger_polarity
-        ''' def(arm) 
-        Before issuing software or hardware triggers to get images from a camera, prepare it for imaging by calling
-        :meth:`arm()<thorlabs_tsi_sdk.tl_camera.TLCamera.arm>`.
-
-
-        Depending on the :attr:`operation_mode<thorlabs_tsi_sdk.tl_camera.TLCamera.operation_mode>`, either call
-        :meth:`issue_software_trigger()<thorlabs_tsi_sdk.tl_camera.TLCamera.issue_software_trigger>` or issue a hardware trigger.
-
-        To start a camera in continuous mode, set the operation_mode to
-        SOFTWARE_TRIGGERED, frames_per_trigger_zero_for_unlimited to zero, Arm
-        the camera, and then call issue_software_trigger one time. The
-        camera will then self-trigger frames until disarm or
-        dispose is called.
-        
-        To start a camera for hardware triggering, set the :attr:`operation_mode<thorlabs_tsi_sdk.tl_camera.TLCamera.operation_mode>` to either
-        HARDWARE_TRIGGERED or BULB, :attr:`frames per trigger<thorlabs_tsi_sdk.tl_camera.TLCamera.frames_per_trigger_zero_for_unlimited>` to
-        one, :attr:`trigger_polarity`<thorlabs_tsi_sdk.tl_camera.TLCamera.trigger_polarity>` to rising-edge or falling-edge triggered, arm the
-        camera, and then issue a triggering signal on the trigger input.
-        If any images are still in the queue when calling :meth:`arm()<thorlabs_tsi_sdk.tl_camera.TLCamera.arm>`, they will be considered stale
-        and cleared from the queue.
-        For more information on the proper procedure for triggering frames and receiving them from the camera, please
-        see the Getting Started section.
-
-
-        GET THE ORDER RIGHT!!!!!
-
-        '''
-
-        #self.trigger_polarity = trigger_polarity
+        self.operation_mode = operation_mode
 
         # reserve some space for the software-based framebuffer
         self.NBuffer = 200
@@ -116,7 +92,18 @@ class CameraThorCamSci:
         cameras = self.sdk.discover_available_cameras()
         self.camera = self.sdk.open_camera(cameras[cameraNo-1])
 
+        if self.operation_mode == 0:
+            self.camera.operation_mode = OPERATION_MODE.SOFTWARE_TRIGGERED
+            self.camera.frames_per_trigger_zero_for_unlimited = 0
+        elif self.operation_mode == 1:
+            self.camera.operation_mode = OPERATION_MODE.HARDWARE_TRIGGERED
+            self.camera.frames_per_trigger_zero_for_unlimited = 1
+        elif self.operation_mode == 2:
+            self.camera.operation_mode = OPERATION_MODE.BULB
+            self.camera.frames_per_trigger_zero_for_unlimited = 1
+        
         self.camera.image_poll_timeout_ms = 2000  # 2 second timeout
+        self.camera.arm(2)
 
         # save these values to place in our custom TIFF tags later
         bit_depth = self.camera.bit_depth
@@ -139,7 +126,10 @@ class CameraThorCamSci:
         # get framesize 
         self.SensorHeight = self.camera.sensor_height_pixels
         self.SensorWidth = self.camera.sensor_width_pixels
-
+        
+        # FIXME begin acquisition             why is this here?
+        #self.camera.issue_software_trigger()
+        
         # set exposure
         self.camera.exposure_time_us=int(self.exposure_time*1000)
 
@@ -149,24 +139,13 @@ class CameraThorCamSci:
         # set blacklevel
         self.camera.blacklevel=int(self.blacklevel)
 
-        # set triggering parameters
-        self.camera.operation_mode = self.operation_mode
-        self.camera.trigger_polarity = self.trigger_polarity
-        self.camera.frames_per_trigger_zero_for_unlimited = 0
-        #self.camera.arm(2)
-        #print('camera is armed')
         # start frame grabber thread
-        #self.frameGrabberThread = threading.Thread(target=self.frameGrabber, daemon=True)
-        #self.frameGrabberThread.start()
+        self.frameGrabberThread = threading.Thread(target=self.frameGrabber, daemon=True)
+        self.frameGrabberThread.start()
         
     def start_live(self):
         self.__logger.debug("Starting Live Thorcam")  
         if not self.is_streaming:
-            self.camera.arm(2)
-            print('camera is armed is doing live')
-            
-            if self.camera.operation_mode == OPERATION_MODE.SOFTWARE_TRIGGERED:
-                self.camera.issue_software_trigger()
             # start data acquisition
             self.frameGrabberThread = threading.Thread(target=self.frameGrabber, daemon=True)
             self.frameGrabberThread.start()
@@ -183,8 +162,6 @@ class CameraThorCamSci:
         if self.is_streaming:
             self.is_streaming = False
             self.frameGrabberThread.join()
-            self.camera.disarm()
-            print('camera is disarmed')
 
 
     def prepare_live(self):
@@ -193,12 +170,17 @@ class CameraThorCamSci:
 
     def close(self):
         self.__logger.debug("Closing Thorcam")
-        self.camera.dispose()
+        self.camera.disarm()
         
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
         self.camera.exposure_time_us=int(exposure_time*1000)
-        print('exposure time is set to', exposure_time)
+    
+    def set_operation_mode(self,operation_mode):
+        self.operation_mode = operation_mode
+
+    def set_trigger_polarity(self,trigger_polarity):
+        self.trigger_polarity = trigger_polarity
 
     def set_gain(self,gain):
         self.gain = gain
@@ -241,26 +223,6 @@ class CameraThorCamSci:
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
         pass
 
-    def set_operation_mode(self, operation_mode):
-        print('disarming camera to change operation mode')
-        self.camera.disarm()
-        print('setting the operation mode here in thorcamscicamera line 214, also frames_per_trigger', operation_mode)       
-        self.camera.operation_mode = int(operation_mode)
-
-        if int(operation_mode) == 0:            # software triggered
-            self.camera.frames_per_trigger_zero_for_unlimited = 0
-        elif int(operation_mode) == 1:          # hardware triggered
-            self.camera.frames_per_trigger_zero_for_unlimited = 1
-        elif int(operation_mode) == 2:          # bulb
-            self.camera.frames_per_trigger_zero_for_unlimited = 1
-        else:
-            self.__logger.warning(f'Operation mode {operation_mode} does not exist, must be 0, 1 or 2')
-            return False
-        
-    #TODO
-    #def set_trigger_polarity(self, trigger_polarity):
-    #    self.camera.trigger_polarity = trigger_polarity
-
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
         if property_name == "gain":
@@ -273,16 +235,17 @@ class CameraThorCamSci:
             self.roi_size = property_value
         elif property_name == "frame_rate":
             self.set_frame_rate(property_value)
-        elif property_name == "trigger_source":
+        elif property_name == "trigger_source":         # not sure about this
+            print('setting the triggering here in thorcamscicamera', property_value)
             self.setTriggerSource(property_value)
         elif property_name == "image_width":
             property_value = 0        
         elif property_name == "image_height":
             property_value = 0
         elif property_name == "operation_mode":             # new additions
-            self.set_operation_mode(int(property_value))
-        #elif property_name == "trigger_polarity":
-        #    self.set_trigger_polarity(property_value)
+            self.set_operation_mode(property_value)
+        elif property_name == "trigger_polarity":           # new additions
+            self.set_trigger_polarity(property_value)
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -304,24 +267,24 @@ class CameraThorCamSci:
             property_value = self.roi_size 
         elif property_name == "frame_Rate":
             property_value = self.frame_rate 
-        elif property_name == "trigger_source":
-            property_value = self.trigger_source
         elif property_name == "operation_mode":
-            property_value = self.camera.operation_mode
-        #elif property_name == "trigger_polarity":
-        #    property_value = self.trigger_polarity
+            property_value = self.operation_mode
+        elif property_name == "trigger_polarity":
+            property_value = self.trigger_polarity
+        elif property_name == "trigger_source":         # not sure about this
+            property_value = self.trigger_source        # not sure about this
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
         return property_value
 
-    def setTriggerSource(self, trigger_source):
+    def setTriggerSource(self, trigger_source):         # not sure about this
         return
             
     def getFrameNumber(self):
         return self.frameNumber 
 
-    def send_trigger(self):
+    def send_trigger(self):                             # not sure about this
         return
 
     def openPropertiesGUI(self):

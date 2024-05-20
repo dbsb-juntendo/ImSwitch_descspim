@@ -11,13 +11,9 @@ This example uses threading to enqueue images coming off the camera in one threa
 dequeue them in the UI thread for quick displaying.
 
 """
+import os
+os.add_dll_directory(os.path.abspath('./imswitch/imcontrol/model/interfaces/thorlabs_tsi_sdk/dll/')) # add the location of the SDK DLLs to the PATH
 
-try:
-    # if on Windows, use the provided setup script to add the DLLs folder to the PATH
-    from windows_setup import configure_path
-    configure_path()
-except ImportError:
-    configure_path = None
 
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK, TLCamera, Frame
 from thorlabs_tsi_sdk.tl_camera_enums import SENSOR_TYPE
