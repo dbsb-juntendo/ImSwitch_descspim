@@ -25,3 +25,5 @@ from .TilingWidget import TilingWidget
 from .ULensesWidget import ULensesWidget
 from .ViewWidget import ViewWidget
 from .WatcherWidget import WatcherWidget
+#from .SetupStatusWidget import SetupStatusWidget # KDC 101 widget
+from .KDC101stageWidget import KDC101stageWidget # KDC 101 widget

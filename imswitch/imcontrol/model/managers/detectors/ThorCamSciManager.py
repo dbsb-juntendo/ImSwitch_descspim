@@ -41,7 +41,6 @@ class ThorCamSciManager(DetectorManager):
 
 
         # Prepare parameters for the GUI
-        print('manager is called')
         parameters = {
             'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
                                                 editable=True),

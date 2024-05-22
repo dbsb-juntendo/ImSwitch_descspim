@@ -13,7 +13,6 @@ class _QObjectABCMeta(type(QtCore.QObject), ABCMeta):
 
 class WidgetFactory:
     """ Factory class for creating widgets. """
-
     def __init__(self, options):
         self._options = options
         self._baseKwargs = {}

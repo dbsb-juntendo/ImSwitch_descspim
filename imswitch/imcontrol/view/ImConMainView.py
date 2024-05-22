@@ -73,7 +73,9 @@ class ImConMainView(QtWidgets.QMainWindow):
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
             'Watcher': _DockInfo(name='File Watcher', yPosition=3),
-            'Tiling': _DockInfo(name='Tiling', yPosition=3)
+            'Tiling': _DockInfo(name='Tiling', yPosition=3), 
+            'SetupStatus': _DockInfo(name='Setup Status', yPosition=1),
+            'KDC101stage': _DockInfo(name='KDC101 Stage', yPosition=1)
         }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),

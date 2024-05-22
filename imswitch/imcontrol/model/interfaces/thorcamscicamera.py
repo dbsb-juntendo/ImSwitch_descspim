@@ -152,7 +152,14 @@ class CameraThorCamSci:
         # set triggering parameters
         self.camera.operation_mode = self.operation_mode
         self.camera.trigger_polarity = self.trigger_polarity
-        self.camera.frames_per_trigger_zero_for_unlimited = 0
+        
+        # maybe this is not needed here
+        if int(self.operation_mode) == 0:            # software triggered
+            self.camera.frames_per_trigger_zero_for_unlimited = 0
+        elif int(self.operation_mode) == 1:          # hardware triggered
+            self.camera.frames_per_trigger_zero_for_unlimited = 1
+        elif int(self.operation_mode) == 2:          # bulb
+            self.camera.frames_per_trigger_zero_for_unlimited = 1
         #self.camera.arm(2)
         #print('camera is armed')
         # start frame grabber thread

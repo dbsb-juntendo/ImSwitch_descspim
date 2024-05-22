@@ -69,6 +69,8 @@ class ViewSetupInfo(SetupInfo):
     - ``Rotator`` (Rotator widget; requires "Rotator" field to be defined)
     - ``RotationScan`` (Rotation scan widget; requires "Rotator" field to be defined)
     - ``MotCorr`` (Leica motorized correction collar widget; requires "leicastand" rs232 device to be defined)
+    - ``SetupStatus`` (setupstatus with hotkeys for setting status and KDC101 widget, set by Max)
+    - ``KDC101stage`` (KDC101 widget, set by Max)
 
     You can also set this to ``true`` to enable all widgets, or ``false`` to
     disable all widgets.

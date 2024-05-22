@@ -19,17 +19,16 @@ class PositionerController(ImConWidgetController):
         for pName, pManager in self._master.positionersManager:
             if not pManager.forPositioning:
                 continue
-
             speed = hasattr(pManager, 'speed')
             self._widget.addPositioner(pName, pManager.axes, speed)
-            for axis in pManager.axes:
-                self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
-                if speed:
-                    self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
+            axis = pManager.axes[0]                                                     # on this KDC101 stage is only one axis
+            self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
+            if speed:
+                self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
-        self._commChannel.sigSetSpeed.connect(lambda speed: self.setSpeedGUI(speed))
+        self._commChannel.sigSetSpeed.connect(lambda speed: self.setSpeedGUI(speed, axis))
 
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
@@ -64,17 +63,25 @@ class PositionerController(ImConWidgetController):
     def stepDown(self, positionerName, axis):
         self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis))
 
-    def setSpeedGUI(self):
+    def setSpeedGUI(self, axis):
         positionerName = self.getPositionerNames()[0]
-        speed = self._widget.getSpeed()
-        self.setSpeed(positionerName=positionerName, speed=speed)
+        speed = self._widget.getSpeed()                                            # this line gets the input into the widget
+        print('_________________getSpeed ', speed)
+        self.setSpeed(positionerName=positionerName, axis=axis,speed=speed)
+        self.updateSpeed(positionerName, axis)
+    
+    def updateSpeed(self, positionerName, axis):                                   # added this function to update the speed in the gui
+        newSpeed = self._master.positionersManager[positionerName].speed(axis)
+        print('_________________newSpeed ', newSpeed)
+        self._widget.updateSpeed(positionerName, axis, newSpeed)
+        self.setSharedAttr(positionerName, axis, _positionAttr, newSpeed)
 
-    def setSpeed(self, positionerName, speed=(1000,1000,1000)):
-        self._master.positionersManager[positionerName].setSpeed(speed)
+    def setSpeed(self, positionerName, axis, speed=(1000,1000,1000)):
+        self._master.positionersManager[positionerName].setSpeed(axis, speed)
         
     def updatePosition(self, positionerName, axis):
-        newPos = self._master.positionersManager[positionerName].position[axis]
-        self._widget.updatePosition(positionerName, axis, newPos)
+        newPos = self._master.positionersManager[positionerName].getPosition(axis) # changed this from ...[positionerName].position(axis) to ...[positionerName].getPosition(axis) 
+        self._widget.updatePosition(positionerName, axis, newPos)                  # because .position[axis] just returns the initial position
         self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
     def attrChanged(self, key, value):

@@ -9,7 +9,7 @@ from .MultiManager import MultiManager
 class DetectorsManager(MultiManager, SignalInterface):
     """ DetectorsManager is an interface for dealing with DetectorManagers. It
     is a MultiManager for detectors. """
-
+    print('XXXXXXXXXXXXXXXX_________initialize DetectorsManager')
     sigAcquisitionStarted = Signal()
     sigAcquisitionStopped = Signal()
     sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
