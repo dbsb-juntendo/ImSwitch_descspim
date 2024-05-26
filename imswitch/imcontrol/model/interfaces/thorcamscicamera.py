@@ -173,6 +173,7 @@ class CameraThorCamSci:
             print('camera is armed is doing live')
             
             if self.camera.operation_mode == OPERATION_MODE.SOFTWARE_TRIGGERED:
+                print('issuing software trigger')
                 self.camera.issue_software_trigger()
             # start data acquisition
             self.frameGrabberThread = threading.Thread(target=self.frameGrabber, daemon=True)

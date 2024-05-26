@@ -133,25 +133,24 @@ class ThorCamSciManager(DetectorManager):
         return value
 
 
-    def setTriggerSource(self, source):
-        """Sets the trigger source and returns the value."""
-        print("XXXXXXX when is this called? line 139 manager", source)
-        if source == 0:
-            self._performSafeCameraAction(
-                lambda: self._camera.setPropertyValue('trigger_source', 0)
-            )
-        elif source == 1:
-            self._performSafeCameraAction(
-                lambda: self._camera.setPropertyValue('trigger_source', 1)
-            )
-        elif source == 2:
-            self._performSafeCameraAction(
-                lambda: self._camera.setPropertyValue('trigger_source', 2)
-            )
-        else:
-            raise ValueError(f'Invalid trigger source "{source}"')
+    #def setTriggerSource(self, source):
+    #    """Sets the trigger source and returns the value."""
+    #    print("XXXXXXX when is this called? line 139 manager", source)
+    #    if source == 0:
+    #        self._performSafeCameraAction(
+    ###            lambda: self._camera.setPropertyValue('trigger_source', 0)
+      #      )
+      #  elif source == 1:
+      #      self._performSafeCameraAction(
+      #          lambda: self._camera.setPropertyValue('trigger_source', 1)
+      #      )
+      #  elif source == 2:
+      #      self._performSafeCameraAction(
+      #          lambda: self._camera.setPropertyValue('trigger_source', 2)
+      #      )
+      #  else:
+      #      raise ValueError(f'Invalid trigger source "{source}"')###
 
-        
     def getChunk(self):
         """Get the latest chunk/buffer from the camera. Can be software-based queue or hardware-based buffer."""
         try:
@@ -172,7 +171,7 @@ class ThorCamSciManager(DetectorManager):
         if not self._running:
             self._camera.start_live()
             self._running = True
-            self.__logger.debug('startlive')
+            self.__logger.debug('startlive, operation mode is', self._camera.getPropertyValue('operation_mode'))
 
     def stopAcquisition(self):
         """Stop the acquisition process."""

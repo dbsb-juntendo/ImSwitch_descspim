@@ -182,6 +182,7 @@ class RecordingManager(SignalInterface):
         self.__record = True
         self.__recordingWorker.detectorNames = detectorNames
         self.__recordingWorker.recMode = recMode
+        print('recMode', recMode)
         self.__recordingWorker.savename = savename
         self.__recordingWorker.saveMode = saveMode
         self.__recordingWorker.saveFormat = saveFormat

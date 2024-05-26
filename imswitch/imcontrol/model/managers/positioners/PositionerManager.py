@@ -8,7 +8,7 @@ class PositionerManager(ABC):
     positioner corresponds to a manager derived from this class. """
 
     @abstractmethod
-    def __init__(self, positionerInfo, name: str, initialPosition: Dict[str, float]):
+    def __init__(self, positionerInfo, name: str, initialPosition: Dict[str, float]):#, initialSpeed: Dict[str, float]):
         """
         Args:
             positionerInfo: See setup file documentation.
@@ -20,7 +20,9 @@ class PositionerManager(ABC):
 
         self._positionerInfo = positionerInfo
         self._position = initialPosition
-
+        #self._speed = initialSpeed
+        #TODO homing
+        #TODO stopping
         self.__name = name
 
         self.__axes = positionerInfo.axes
@@ -42,6 +44,15 @@ class PositionerManager(ABC):
         ``{ axis: position }``. """
         return self._position
 
+    #@property
+    #3def speed(self) -> Dict[str, float]:
+    #    """ The speed of each axis. This is a dict in the format
+    #    ``{ axis: position }``. """
+    #    return self._speed
+    
+    #TODO homing
+    #TODO stopping
+    
     @property
     def axes(self) -> List[str]:
         """ The list of axes that are controlled by this positioner. """

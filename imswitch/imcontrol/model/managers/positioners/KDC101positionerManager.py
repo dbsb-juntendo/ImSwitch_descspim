@@ -1,13 +1,14 @@
 from imswitch.imcommon.model import initLogger
 from thorlabs_apt_device.devices.kdc101 import KDC101
 from .PositionerManager import PositionerManager
+import time
 
 """
 Encoder steps per degree found here:
 https://www.thorlabs.com/Software/Motion%20Control/APT_Communications_Protocol.pdf
 
 Encoder steps per degree for PRMTZ8 is 1919.6418578623391 (rotation stage)
-Actuator Z8235B  EncCnt per mm  34554.96  Velocity 772981.3692 (mm/s)  Acceleration 263.8443072 (mm/s2)
+Actuator Z8235B  EncCnt per mm  34554.96  Velocity 772981.3692 (units/s)  Acceleration 263.8443072 (mm/s2)
 EncCnt Encoder count -> 1 unit is 1 mm /34554.96 = 28.93940552 nm
 
 """
@@ -25,15 +26,21 @@ class KDC101positionerManager(PositionerManager):
         try:
             self.__logger.debug(f'Initializing KDC101 (name: {name}) on port {self._port}')
             self.kdcstage = KDC101(serial_port=self._port)
+            self.__logger.info(f'Successfully initialized KDC101 (name: {name}) on port {self._port}, waiting 5 seconds')
+            time.sleep(5)       # need to wait for the stage to load, otherwise velparams are not available
         except:
             self.__logger.error('Failed to initialize device, check connection and port')
-        self.__logger.info(f'Initialized KDC101 (name: {name}) on port {self._port}')
 
         self._posConvFac = positionerInfo.managerProperties['posConvFac']
         self._velConvFac = positionerInfo.managerProperties['velConvFac']
         self._accConvFac = positionerInfo.managerProperties['accConvFac']
-
-        super().__init__(positionerInfo, name, initialPosition={axis: self.kdcstage.status['position'] for axis in positionerInfo.axes})
+        self.setSpeed(1000, positionerInfo.axes[0])     # setting the default speed to 1000 um/s, hardcoding it for now
+        self.setAcceleration(1000, positionerInfo.axes[0])     # setting the default acceleration to 1000 um/s2, hardcoding it for now
+        super().__init__(positionerInfo, 
+                         name, 
+                         initialPosition={axis: self.kdcstage.status['position'] for axis in positionerInfo.axes}#,
+                         #initialSpeed={axis: self._unitspers_to_mmpers(self.kdcstage.velparams['max_velocity']) for axis in positionerInfo.axes}
+                         )
 
     def _mm_to_units(self, mm):                 # usually used when stage is controlled from outside
         return int(mm*self._posConvFac)
@@ -42,10 +49,19 @@ class KDC101positionerManager(PositionerManager):
         return units / self._posConvFac
     
     def _mmpers_to_unitspers(self, mmps):       # used when the velocity is set by user, calculating mm/s to units/s
-        return int(mmps*self._velConvFac)
+        speed = mmps*(self._velConvFac*0.001)     # 0.001 is to convert um to mm
+        print(f'Calculating {mmps} mmps multiplied with {self._velConvFac} to {speed} units/s')
+        return mmps*self._velConvFac
     
     def _unitspers_to_mmpers(self, unitspers):       # used when the velocity is status checked, calculating units/s to mm/s
-        return int(unitspers/self._velConvFac)
+        speed = unitspers/(self._velConvFac*0.001)     # 0.001 is to convert um to mm
+        print(f'Calculating {unitspers} units divided by {self._velConvFac} to {speed} um/s')
+        return round(speed, 4)
+    
+    def _mmpers2_to_unitspers2(self, mmps2):       # used when the acceleration is set by user, calculating mm/s2 to units/s2
+        acceleration = mmps2*(self._velConvFac*0.001)     # 0.001 is to convert um to mm
+        print(f'Calculating {mmps2} mmps multiplied with {self._velConvFac} to {acceleration} units/s2')
+        return mmps2*self._velConvFac
     
     def home(self):
         self.kdcstage.home()
@@ -77,31 +93,76 @@ class KDC101positionerManager(PositionerManager):
         return self.getPosition()
 
     def getPosition(self, axis):
-        self.__logger.debug(f'Getting KDC101 position for axis {axis}')
-        return self._units_to_mm(self.kdcstage.status['position'])
+        pos = self._units_to_mm(self.kdcstage.status['position'])
+        self.__logger.debug(f'Getting KDC101 position for axis {axis}: {pos} mm')
+        return pos
 
     def finalize(self):
         self.kdcstage.close()
     
-    def setSpeed(self, axis, mmps):      # setMove_velocity_in_units
+    def setSpeed(self, mmps, axis):      # setMove_velocity_in_units
         '''
         Setting the velocity parameters for the stage
         set_velocity_params(acceleration, max_velocity, bay=0, channel=0)
         '''
-        self.__logger.debug(f'Changing KDC101 max velocity for axis {axis} to {mmps} mm/s')
+        self.__logger.debug(f'Changing KDC101 max velocity for axis {axis} to {mmps} ums')
         self.kdcstage.set_velocity_params(self.kdcstage.velparams['acceleration'],
-                                          self._mmpers_to_unitspers(mmps))
+                                          int(self._mmpers_to_unitspers(mmps)))
+        
+    def setAcceleration(self, mmps2, axis):      # setMove_velocity_in_units
+        '''
+        Setting the velocity parameters for the stage
+        set_velocity_params(acceleration, max_velocity, bay=0, channel=0)
+        '''
+        self.__logger.debug(f'Changing KDC101 max acceleration for axis {axis} to {mmps2} um/s2')
+        self.kdcstage.set_velocity_params(int(self._mmpers2_to_unitspers2(mmps2)),
+                                          self.kdcstage.velparams['max_velocity'])
         
     
-    def speed(self, axis):
-        '''
-        Get the velocity/speed of the stage
-        '''
-        return self._unitspers_to_mmpers(self.kdcstage.velparams['max_velocity'])
+    #def speed(self, axis):
+    #    '''
+    #    Get the velocity/speed of the stage
+    #    '''
+    #    return self._unitspers_to_mmpers(self.kdcstage.velparams['max_velocity'])
     
     #TODO change the acceleration as well
 
 
     
 
-
+'''
+"positioners": {
+    "sample_stage": {
+        "managerName": "KDC101positionerManager",
+        "managerProperties": {
+            "port": "COM14",
+            "units": "mm",
+            "posConvFac": 34554.96,
+            "velConvFac": 772981.3692,
+            "accConvFac": 263.8443072
+        },
+        "axes": [
+          "X"
+      ],
+      "isPositiveDirection": true,
+      "forPositioning": true,
+      "forScanning": true
+    },
+    "camera_stage": {
+        "managerName": "KDC101positionerManager",
+        "managerProperties": {
+            "port": "COM15",
+            "units": "mm",
+            "posConvFac": 34554.96,
+            "velConvFac": 772981.3692,
+            "accConvFac": 263.8443072
+        },
+        "axes": [
+          "Y"
+      ],
+      "isPositiveDirection": true,
+      "forPositioning": true,
+      "forScanning": true
+    }
+  },
+'''

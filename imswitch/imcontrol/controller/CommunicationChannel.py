@@ -90,6 +90,8 @@ class CommunicationChannel(SignalInterface):
     
     sigUpdateRotatorPosition = Signal(str)  # (rotatorName)
 
+    sigUpdateMotorPosition = Signal() # # TODO: Just forcely update the positoin in the GUI, added from UC2
+
     sigSetSyncInMovementSettings = Signal(str, float)  # (rotatorName, position)
 
     sigNewFrame = Signal()
@@ -98,7 +100,7 @@ class CommunicationChannel(SignalInterface):
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)
     sigSetExposure = Signal(float)
-    sigSetSpeed = Signal(float)
+    #sigSetSpeed = Signal(float)
 
     @property
     def sharedAttrs(self):
