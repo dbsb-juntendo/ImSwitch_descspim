@@ -28,7 +28,7 @@ class RecordingController(ImConWidgetController):
         self.lapseCurrent = -1
         self.lapseTotal = 0
 
-        self._widget.setsaveFormat(SaveFormat.HDF5.value)
+        self._widget.setsaveFormat(SaveFormat.TIFF.value)
         self._widget.setSnapSaveMode(SaveMode.Disk.value)
         self._widget.setSnapSaveModeVisible(self._setupInfo.hasWidget('Image'))
 
@@ -37,7 +37,8 @@ class RecordingController(ImConWidgetController):
             self._moduleCommChannel.isModuleRegistered('imreconstruct')
         )
 
-        self.untilStop()
+        #self.untilStop()
+        self.specFrames()
 
         # Connect CommunicationChannel signals
         self._commChannel.sigRecordingStarted.connect(self.recordingStarted)

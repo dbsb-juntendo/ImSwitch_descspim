@@ -75,7 +75,7 @@ class RecordingWidget(Widget):
         self.currentFrame = QtWidgets.QLabel('0 /')
         self.currentFrame.setAlignment((QtCore.Qt.AlignRight |
                                         QtCore.Qt.AlignVCenter))
-        self.numExpositionsEdit = QtWidgets.QLineEdit('100')
+        self.numExpositionsEdit = QtWidgets.QLineEdit('10')
 
         self.specifyTime = QtWidgets.QRadioButton('Time (s)')
         self.currentTime = QtWidgets.QLabel('0 / ')
@@ -96,8 +96,8 @@ class RecordingWidget(Widget):
 
         self.saveFormatLabel = QtWidgets.QLabel('<strong>File format:</strong>')
         self.saveFormatList = QtWidgets.QComboBox()
-        self.saveFormatList.addItems(['HDF5', 'TIFF', 'ZARR'])
-
+        self.saveFormatList.addItems(['HDF5','TIFF','ZARR'])
+        
         self.snapSaveModeLabel = QtWidgets.QLabel('<strong>Snap save mode:</strong>')
         self.snapSaveModeList = QtWidgets.QComboBox()
         self.snapSaveModeList.addItems(['Save on disk',
@@ -192,9 +192,11 @@ class RecordingWidget(Widget):
         layout.addWidget(buttonWidget)
 
         # Initial condition of fields and checkboxes.
+        #TODO change that number of frames is default setting
         self.filenameEdit.setEnabled(False)
-        self.untilSTOPbtn.setChecked(True)
-
+        self.specifyFrames.setChecked(True)
+        self.untilSTOPbtn.setChecked(False)
+        
         # Connect signals
         self.detectorModeList.currentIndexChanged.connect(self.sigDetectorModeChanged)
         self.detectorList.sigCheckedChanged.connect(self.sigDetectorSpecificChanged)

@@ -24,10 +24,20 @@ logger = logging.getLogger(__name__)
 class AsTemporayFile(object):
     """ A temporary file that when exiting the context manager is renamed to its original name. """
     def __init__(self, filepath, tmp_extension='.tmp'):
-        if os.path.exists(filepath):
-            raise FileExistsError(f'File {filepath} already exists.')
-        self.path = filepath
-        self.tmp_path = filepath + tmp_extension
+
+        #TODO is buggy
+        if not os.path.isfile(filepath):
+            self.path = filepath
+            self.tmp_path = filepath + tmp_extension
+        elif not os.path.isfile(filepath + '_1.tiff'):
+            self.path = filepath + '_1.tiff'
+            self.tmp_path = filepath + tmp_extension
+            #raise FileExistsError(f'File {filepath} already exists.')
+        else:
+            ids = [int(i.split('_')[-1].split('.')[0]) for i in os.listdir(os.path.dirname(filepath)) if i.startswith(os.path.basename(filepath)) and i.split('_')[-1].split('.')[0].isdigit()]
+            self.path = filepath[:-5] + '_' + str(int(max(ids)) + 1) + '.tiff'
+            self.tmp_path = self.path + tmp_extension
+
 
     def __enter__(self):
         return self.tmp_path
@@ -182,7 +192,6 @@ class RecordingManager(SignalInterface):
         self.__record = True
         self.__recordingWorker.detectorNames = detectorNames
         self.__recordingWorker.recMode = recMode
-        print('recMode', recMode)
         self.__recordingWorker.savename = savename
         self.__recordingWorker.saveMode = saveMode
         self.__recordingWorker.saveFormat = saveFormat
@@ -372,6 +381,22 @@ class RecordingWorker(Worker):
                 fileExtension = str(self.saveFormat.name).lower()
                 filenames[detectorName] = self.__recordingManager.getSaveFilePath(
                     f'{self.savename}_{detectorName}.{fileExtension}', False, False)
+                
+                saving_path_tif = filenames[detectorName][:-5]
+                
+                # check if path exists and if not create it
+                if not os.path.exists(saving_path_tif):
+                    self.__logger.info(f'Creating save folder at {saving_path_tif}')
+                    os.mkdir(saving_path_tif)
+                elif not os.path.exists(saving_path_tif + '_1'):
+                    saving_path_tif = saving_path_tif + '_1'
+                    self.__logger.info(f'Creating save folder at {saving_path_tif}')
+                    os.mkdir(saving_path_tif)
+                else:
+                    list_ids = [i.split('_')[-1] for i in os.listdir(os.path.dirname(saving_path_tif)) if i.startswith(os.path.basename(saving_path_tif)) and i.split('_')[-1].isdigit()]
+                    saving_path_tif = saving_path_tif + '_' + str(int(max(list_ids)) + 1)
+                    self.__logger.info(f'Creating save folder at {saving_path_tif}')
+                    os.mkdir(saving_path_tif)
 
             elif self.saveFormat == SaveFormat.ZARR:
                 datasets[detectorName] = files[detectorName].create_dataset(datasetName, shape=(1, *reversed(shape)),
@@ -392,6 +417,7 @@ class RecordingWorker(Worker):
 
             if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
                 recFrames = self.recFrames
+                print('how many recFrames', recFrames)
                 if recFrames is None:
                     raise ValueError('recFrames must be specified in SpecFrames, ScanOnce or'
                                      ' ScanLapse mode')
@@ -409,15 +435,21 @@ class RecordingWorker(Worker):
                         if n > 0:
                             it = currentFrame[detectorName]
                             if self.saveFormat == SaveFormat.TIFF:
+                                if len([i for i in os.listdir(saving_path_tif) if i.endswith('.tif')]) == recFrames:        # continue here   
+                                    self.__recordingManager.endRecording(emitSignal=True, wait=False)       # emit signal determines whether to "release" the recording button in the recording widget
+                                    print('last image recording now')
                                 try:
-                                    filePath = filenames[detectorName]
-                                    tiff.imwrite(filePath, newFrames, append=True)
+                                        
+                                    
+                                    prefix = '/image_' + str(n) + '.tif'
+                                    print(saving_path_tif + prefix)
+                                    tiff.imwrite(saving_path_tif + prefix, newFrames[n-1])
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
-                                    if self.saveFormat == SaveFormat.TIFF:
-                                        filePath = self.__recordingManager.getSaveFilePath(
-                                            f'{self.savename}_{detectorName}.{fileExtension}', False, False)
-                                        continue
+                                    #if self.saveFormat == SaveFormat.TIFF:                                  # this is incomplete
+                                    #    filePath = self.__recordingManager.getSaveFilePath(
+                                    #        f'{self.savename}_{detectorName}.{fileExtension}', False, False)
+                                    #    continue
                             elif self.saveFormat == SaveFormat.HDF5:
                                 dataset = datasets[detectorName]
                                 if (it + n) <= recFrames:

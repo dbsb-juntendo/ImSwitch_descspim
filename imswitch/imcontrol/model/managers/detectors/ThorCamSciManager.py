@@ -171,7 +171,8 @@ class ThorCamSciManager(DetectorManager):
         if not self._running:
             self._camera.start_live()
             self._running = True
-            self.__logger.debug('startlive, operation mode is', self._camera.getPropertyValue('operation_mode'))
+            self.__logger.debug('startlive, operation mode is')
+            print({self._camera.getPropertyValue('operation_mode')})
 
     def stopAcquisition(self):
         """Stop the acquisition process."""
