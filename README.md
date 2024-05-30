@@ -6,7 +6,7 @@
 
 ## Installation
 
-Create a conda environment with python=3.10 and install imswitch with `pip install -r requirements_descspim.txt` and start it using ``python -m imswitch`` in a selected environment with python 3.10. Apart from that, install the thorlabs SDK for the thorlabs scientific camera with ``pip install -e ./thorlabs_tsi_sdk-0.0.8/``. Lastly, clone the repository ``git clone https://gitlab.com/ptapping/thorlabs-apt-device.git`` and install with ``pip install --user ./thorlabs-apt-device`` for the correct KDC101 controller driver. 
+Create a conda environment with python=3.10 and install imswitch with ``pip install -e . `` while in the Imswitch_descspim folder. Then, install the requirements with `pip install -r requirements_descspim.txt` and install the thorlabs SDK for the thorlabs scientific camera with ``pip install -e ./thorlabs_tsi_sdk-0.0.8/``. Lastly, clone the repository ``git clone https://gitlab.com/ptapping/thorlabs-apt-device.git`` and install with ``pip install --user ./thorlabs-apt-device`` for the correct KDC101 controller driver (may not be needed). Start imswitch by running ``imswitch`` in said environment and select the configuration file ``descspim.json``.
 
 ## Documentation
 
