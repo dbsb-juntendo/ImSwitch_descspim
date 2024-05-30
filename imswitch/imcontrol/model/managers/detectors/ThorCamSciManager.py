@@ -54,9 +54,9 @@ class ThorCamSciManager(DetectorManager):
                         editable=False),
             'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
                                                 valueUnits='µm', editable=True),
-            "trigger_source": DetectorNumberParameter(group='Misc',
-                                                    value=0, valueUnits='arb.u.',
-                                                    editable=True),
+            "trigger_polarity": DetectorNumberParameter(group='Misc',
+                                                    value=0, valueUnits='',
+                                                    editable=True),                                    
             "operation_mode": DetectorNumberParameter(group='Misc',
                                                     value=0, valueUnits='',
                                                     editable=True),
@@ -90,15 +90,6 @@ class ThorCamSciManager(DetectorManager):
         self.setParameter('Internal frame rate',
                           self._camera.getPropertyValue('internal_frame_rate')[0])
 
-        triggerSource = self._camera.getPropertyValue('trigger_source')
-        print('trigger source is, line 91 manager', triggerSource)
-        if triggerSource == 0:
-            self.setParameter('trigger_source', 0)
-        elif triggerSource == 1:
-            self.setParameter('trigger_source', 1)
-        elif triggerSource == 2:
-            self.setParameter('trigger_source', 2)
-
     
     def getLatestFrame(self, is_save=False):
         """this function waits for the latest frame from the camera and returns it"""
@@ -131,25 +122,6 @@ class ThorCamSciManager(DetectorManager):
 
         value = self._camera.getPropertyValue(name)
         return value
-
-
-    #def setTriggerSource(self, source):
-    #    """Sets the trigger source and returns the value."""
-    #    print("XXXXXXX when is this called? line 139 manager", source)
-    #    if source == 0:
-    #        self._performSafeCameraAction(
-    ###            lambda: self._camera.setPropertyValue('trigger_source', 0)
-      #      )
-      #  elif source == 1:
-      #      self._performSafeCameraAction(
-      #          lambda: self._camera.setPropertyValue('trigger_source', 1)
-      #      )
-      #  elif source == 2:
-      #      self._performSafeCameraAction(
-      #          lambda: self._camera.setPropertyValue('trigger_source', 2)
-      #      )
-      #  else:
-      #      raise ValueError(f'Invalid trigger source "{source}"')###
 
     def getChunk(self):
         """Get the latest chunk/buffer from the camera. Can be software-based queue or hardware-based buffer."""

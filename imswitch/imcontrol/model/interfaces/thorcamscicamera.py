@@ -265,9 +265,14 @@ class CameraThorCamSci:
             self.__logger.warning(f'Operation mode {operation_mode} does not exist, must be 0, 1 or 2')
             return False
         
-    #TODO
-    #def set_trigger_polarity(self, trigger_polarity):
-    #    self.camera.trigger_polarity = trigger_polarity
+    def set_trigger_polarity(self, trigger_polarity):
+        if trigger_polarity not in [0, 1]:
+            self.__logger.warning(f'Trigger polarity {trigger_polarity} does not exist, must be 0 or 1')
+            return False
+        else:
+            print('Disarming camera to change Trigger polarity to ', str(int(trigger_polarity)))
+            self.camera.disarm()
+            self.camera.trigger_polarity = trigger_polarity
 
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
@@ -281,16 +286,14 @@ class CameraThorCamSci:
             self.roi_size = property_value
         elif property_name == "frame_rate":
             self.set_frame_rate(property_value)
-        elif property_name == "trigger_source":
-            self.setTriggerSource(property_value)
         elif property_name == "image_width":
             property_value = 0        
         elif property_name == "image_height":
             property_value = 0
         elif property_name == "operation_mode":             # new additions
             self.set_operation_mode(int(property_value))
-        #elif property_name == "trigger_polarity":
-        #    self.set_trigger_polarity(property_value)
+        elif property_name == "trigger_polarity":
+            self.set_trigger_polarity(property_value)
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -312,19 +315,15 @@ class CameraThorCamSci:
             property_value = self.roi_size 
         elif property_name == "frame_Rate":
             property_value = self.frame_rate 
-        elif property_name == "trigger_source":
-            property_value = self.trigger_source
         elif property_name == "operation_mode":
             property_value = self.camera.operation_mode
-        #elif property_name == "trigger_polarity":
-        #    property_value = self.trigger_polarity
+        elif property_name == "trigger_polarity":
+            property_value = self.trigger_polarity
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
         return property_value
 
-    def setTriggerSource(self, trigger_source):
-        return
             
     def getFrameNumber(self):
         return self.frameNumber 

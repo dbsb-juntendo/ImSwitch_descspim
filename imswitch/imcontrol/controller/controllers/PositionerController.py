@@ -3,7 +3,7 @@ from typing import Dict, List
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
-
+import time
 
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
@@ -19,36 +19,23 @@ class PositionerController(ImConWidgetController):
         for pName, pManager in self._master.positionersManager:
             if not pManager.forPositioning:
                 continue
-            #hasSpeed = hasattr(pManager, 'speed')
-            #TODO homing
-            #TODO stopping
-            self._widget.addPositioner(pName, pManager.axes)#, hasSpeed) #TODO homing, stopping
-            for axis in pManager.axes:
-                                                           # on this KDC101 stage is only one axis
-                self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
-                #if hasSpeed:
-                #    if pManager.speed[axis]== 0:
-                #        mSpeed = 10000
-                #    else:
-                #        mSpeed = pManager.speed[axis]       # get the speed in um/s
-                #    self.setSharedAttr(pName, axis, _speedAttr, mSpeed)
-                #TODO homing
-                #TODO stopping
+            speed = hasattr(pManager, 'speed')
+            self._widget.addPositioner(pName, pManager.axes, speed)
+            axis = pManager.axes[0]                                                     # on this KDC101 stage is only one axis
+            self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
+            if speed:
+                self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
-        #self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI) # force update position in GUI
-        #self._commChannel.sigSetSpeed.connect(self.updateAllSpeedGUI) # force update speed in GUI
-        #self._commChannel.sigSetSpeed.connect(lambda speed: self.setSpeedGUI(speed))
+        self._commChannel.sigSetSpeed.connect(lambda speed: self.setSpeedGUI(speed, axis))
 
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
-        self._widget.sigStepAbsoluteClicked.connect(self.moveAbsolute)   
-        #self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
-
-        #TODO homing
-        #TODO stopping     
+        self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
+        # absolute movement
+        self._widget.sigStepAbsoluteClicked.connect(self.moveAbsolute)
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
@@ -59,26 +46,34 @@ class PositionerController(ImConWidgetController):
     def getPos(self):
         return self._master.positionersManager.execOnAll(lambda p: p.position)
 
-    #def getSpeed(self):
-    #    return self._master.positionersManager.execOnAll(lambda p: p.speed)
+    def getSpeed(self):
+        return self._master.positionersManager.execOnAll(lambda p: p.speed)
 
-    def move(self, positionerName, axis, dist, is_absolute=False):
-        """ Moves positioner by dist micrometers in the specified axis. """
-        if is_absolute:
-            self._master.positionersManager[positionerName].setPosition(dist, axis)
-        else:
-            self._master.positionersManager[positionerName].move(dist, axis)
-        self._commChannel.sigUpdateMotorPosition.emit()            # dont know what this does
-        self.updatePosition(positionerName, axis)
+    def move(self, positionerName, axis, dist):
+        """ Moves positioner by dist micrometers in the specified axis. RELATIVE MOVEMENT."""
+        initial_position = round(self._master.positionersManager[positionerName].getPosition(axis))
+        print('_________________initial_position + dist', initial_position+dist)
+        self._master.positionersManager[positionerName].move(dist, axis)
+        # continuisly check the position
+        while round(self._master.positionersManager[positionerName].getPosition(axis))!=initial_position+dist:
+            time.sleep(0.5)
+            print('_________________position', round(self._master.positionersManager[positionerName].getPosition(axis)))
+            print('_________________initial_position + dist', initial_position+dist)
+            self.updatePosition(positionerName, axis)
+    
+    def moveAbsolute(self, positionerName, axis):
+        """ Moves positioner by dist micrometers in the specified axis. ABSOLUTE MOVEMENT."""
+        dist = self._widget.getAbsPosition(positionerName, axis)
+        self._master.positionersManager[positionerName].moveAbsolute(dist, axis)
+        # continuisly check the position
+        while round(self._master.positionersManager[positionerName].getPosition(axis))!=dist:
+            time.sleep(0.5)
+            self.updatePosition(positionerName, axis)
 
     def setPos(self, positionerName, axis, position):
         """ Moves the positioner to the specified position in the specified axis. """
         self._master.positionersManager[positionerName].setPosition(position, axis)
         self.updatePosition(positionerName, axis)
-
-    def moveAbsolute(self, positionerName, axis):
-        print('_________________moveAbsolute ', self._widget.getAbsPosition(positionerName, axis))
-        self.move(positionerName, axis, self._widget.getAbsPosition(positionerName, axis), is_absolute=True)
 
     def stepUp(self, positionerName, axis):
         self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis))
@@ -86,42 +81,26 @@ class PositionerController(ImConWidgetController):
     def stepDown(self, positionerName, axis):
         self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis))
 
-    #def setSpeed(self, positionerName, axis, speed=(1000,1000,1000)):
-    #    self._master.positionersManager[positionerName].setSpeed(speed, axis)
-    #    self.setSharedAttr(positionerName, axis, _speedAttr, speed)
-    #    self._widget.setSpeedSize(positionerName, axis, speed)
+    def setSpeedGUI(self, axis):
+        positionerName = self.getPositionerNames()[0]
+        speed = self._widget.getSpeed()                                            # this line gets the input into the widget
+        print('_________________getSpeed ', speed)
+        self.setSpeed(positionerName=positionerName, axis=axis,speed=speed)
+        self.updateSpeed(positionerName, axis)
+    
+    def updateSpeed(self, positionerName, axis):                                   # added this function to update the speed in the gui
+        newSpeed = self._master.positionersManager[positionerName].speed(axis)
+        print('_________________newSpeed ', newSpeed)
+        self._widget.updateSpeed(positionerName, axis, newSpeed)
+        self.setSharedAttr(positionerName, axis, _positionAttr, newSpeed)
 
-    #def updateAllSpeedGUI(self):
-    #    # update all speeds for all axes in GUI
-    #    for positionerName in self._master.positionersManager.getAllDeviceNames():
-    #        for axis in self._master.positionersManager[positionerName].axes:
-    #            self.updateSpeed(positionerName, axis)
-
-    #def setSpeedGUI(self, axis=None):
-    #    positionerName = self.getPositionerNames()[0]
-    #    speed = self._widget.getSpeed(positionerName, axis)                                            # this line gets the input into the widget
-    #    self.setSpeed(positionerName=positionerName, axis=axis,speed=speed)
-    #    self.updateSpeed(positionerName, axis)
-
-    def updateAllPositionGUI(self):
-        # update all positions for all axes in GUI
-        for positionerName in self._master.positionersManager.getAllDeviceNames():
-            for axis in self._master.positionersManager[positionerName].axes:
-                self.updatePosition(positionerName, axis)
-                self.updateSpeed(positionerName, axis)
-
+    def setSpeed(self, positionerName, axis, speed=(1000,1000,1000)):
+        self._master.positionersManager[positionerName].setSpeed(axis, speed)
+        
     def updatePosition(self, positionerName, axis):
         newPos = self._master.positionersManager[positionerName].getPosition(axis) # changed this from ...[positionerName].position(axis) to ...[positionerName].getPosition(axis) 
         self._widget.updatePosition(positionerName, axis, newPos)                  # because .position[axis] just returns the initial position
         self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
-
-    #def updateSpeed(self, positionerName, axis):
-    #    newSpeed = self._master.positionersManager[positionerName].speed[axis]
-    #    self._widget.updateSpeed(positionerName, axis, newSpeed)
-    #    self.setSharedAttr(positionerName, axis, _speedAttr, newSpeed)
-
-    #TODO homing
-    #TODO stopping
 
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 4 or key[0] != _attrCategory:
@@ -194,7 +173,6 @@ class PositionerController(ImConWidgetController):
     def stepPositionerUp(self, positionerName: str, axis: str) -> None:
         """ Moves the specified positioner axis in positive direction by its
         set step size. """
-        print('_____________apiexport step up')
         self.stepUp(positionerName, axis)
 
     @APIExport(runOnUIThread=True)
@@ -208,9 +186,6 @@ class PositionerController(ImConWidgetController):
 
 _attrCategory = 'Positioner'
 _positionAttr = 'Position'
-#_speedAttr = "Speed"
-#TODO homing
-#TODO stopping
 
 
 # Copyright (C) 2020-2021 ImSwitch developers
