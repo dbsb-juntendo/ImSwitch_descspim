@@ -17,11 +17,11 @@ class LaserController(ImConWidgetController):
 
         # Set up lasers
         for lName, lManager in self._master.lasersManager:
+            print('--------------------------', lManager.isModulated)
             self._widget.addLaser(
                 lName, lManager.valueUnits, lManager.valueDecimals, lManager.wavelength,
                 (lManager.valueRangeMin, lManager.valueRangeMax) if not lManager.isBinary else None,
-                lManager.valueRangeStep if lManager.valueRangeStep is not None else None,
-                (lManager.freqRangeMin, lManager.freqRangeMax, lManager.freqRangeInit) if lManager.isModulated else (0, 0, 0)
+                lManager.valueRangeStep if lManager.valueRangeStep is not None else None
             )
             if not lManager.isBinary:
                 self.valueChanged(lName, lManager.valueRangeMin)
@@ -47,8 +47,9 @@ class LaserController(ImConWidgetController):
         self._widget.sigValueChanged.connect(self.valueChanged)
 
         self._widget.sigModEnabledChanged.connect(self.toggleModulation)
-        self._widget.sigFreqChanged.connect(self.frequencyChanged)
-        self._widget.sigDutyCycleChanged.connect(self.dutyCycleChanged)
+        #self._widget.sigFreqChanged.connect(self.frequencyChanged)
+        self._widget.sigModPowChanged.connect(self.ModulationPowerChanged)
+        #self._widget.sigDutyCycleChanged.connect(self.dutyCycleChanged)
 
         self._widget.sigPresetSelected.connect(self.presetSelected)
         self._widget.sigLoadPresetClicked.connect(self.loadPreset)
@@ -75,19 +76,26 @@ class LaserController(ImConWidgetController):
     def toggleModulation(self, laserName, enabled):
         """ Enable or disable laser modulation (on/off). """
         self._master.lasersManager[laserName].setModulationEnabled(enabled)
-        self.setSharedAttr(laserName, _freqEnAttr, enabled)
+        #self.setSharedAttr(laserName, _freqEnAttr, enabled)
+        self.setSharedAttr(laserName, _modEnAttr, enabled)
 
-    def frequencyChanged(self, laserName, frequency):
-        """ Change modulation frequency. """
-        self._master.lasersManager[laserName].setModulationFrequency(frequency)
-        self._widget.setModulationFrequency(laserName, frequency)
-        self.setSharedAttr(laserName, _freqAttr, frequency)
+    #def frequencyChanged(self, laserName, frequency):
+    #    """ Change modulation frequency. """
+    #    self._master.lasersManager[laserName].setModulationFrequency(frequency)
+    #    self._widget.setModulationFrequency(laserName, frequency)
+    #    self.setSharedAttr(laserName, _freqAttr, frequency)
+
+    def ModulationPowerChanged(self, laserName, value):
+        """ Change modulation power. """
+        self._master.lasersManager[laserName].setModulationPower(value)
+        self._widget.setModulationPower(laserName, value)
+        self.setSharedAttr(laserName, _modPowerAttr, value)
     
-    def dutyCycleChanged(self, laserName, dutyCycle):
-        """ Change modulation duty cycle. """
-        self._master.lasersManager[laserName].setModulationDutyCycle(dutyCycle)
-        self._widget.setModulationDutyCycle(laserName, dutyCycle)
-        self.setSharedAttr(laserName, _dcAttr, dutyCycle)
+    #def dutyCycleChanged(self, laserName, dutyCycle):
+    #    """ Change modulation duty cycle. """
+    #    self._master.lasersManager[laserName].setModulationDutyCycle(dutyCycle)
+    #    self._widget.setModulationDutyCycle(laserName, dutyCycle)
+    #    self.setSharedAttr(laserName, _dcAttr, dutyCycle)
 
     def presetSelected(self, presetName):
         """ Handles what happens when a preset is selected in the preset list.
@@ -205,7 +213,10 @@ class LaserController(ImConWidgetController):
             self.setLaserValue(laserName, laserPresetInfo.value)
 
     def scanChanged(self, isScanning):
-        """ Handles what happens when a scan is started/stopped. """
+        """ Handles what happens when a scan is started/stopped. """          
+        # this is needed when imswitch is handling the scan
+        # for now, arduino is handling the scanning
+        # once the camera is not exposing the laser will not be on whilst digital modulation is set
         for lName, _ in self._master.lasersManager:
             self._widget.setLaserEditable(lName, not isScanning)
         self._master.lasersManager.execOnAll(lambda l: l.setScanModeActive(isScanning))
@@ -293,9 +304,11 @@ class LaserController(ImConWidgetController):
 _attrCategory = 'Laser'
 _enabledAttr = 'Enabled'
 _valueAttr = 'Value'
-_freqEnAttr = "ModulationEnabled"
-_freqAttr = "Frequency"
-_dcAttr = "DutyCycle"
+#_freqEnAttr = "ModulationEnabled"
+_modEnAttr = "ModulationEnabled"
+_modPowerAttr = "ModulationPower"
+#_freqAttr = "Frequency"     
+#_dcAttr = "DutyCycle"
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

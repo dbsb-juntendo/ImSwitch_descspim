@@ -33,9 +33,14 @@ class PositionerController(ImConWidgetController):
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
-        self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
+        #self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
         # absolute movement
         self._widget.sigStepAbsoluteClicked.connect(self.moveAbsolute)
+        # trigIO params
+        #self._widget.sigsetIOparams1Clicked.connect() # what to do here
+        self._widget.sigSetIOparamsClicked.connect(self.set_IO_params) # what to do here
+        # relative movement setting io channel 1
+        self._widget.sigsetRelDistanceClicked.connect(self.set_relative_distance)
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
@@ -130,6 +135,30 @@ class PositionerController(ImConWidgetController):
         positionerZ = self.getPositionerNames()[2]
         self.__logger.debug(f"Move {positionerZ}, axis Z, dist {str(z)}")
         #self.move(self.getPositionerNames[2], 'Z', z)
+
+    # trigger stuff
+    def set_IO_params(self, positionerName, axis):
+        io_params = self._widget.getIOparams(positionerName, axis)
+        self.__logger.debug(f"Setting IO params for {positionerName}, axis {axis}, trig1_mode {io_params[0]}, trig2_mode {io_params[1]}, hardcoding polarity HIGH.")
+        self._master.positionersManager[positionerName].set_triggerIOconfig(io_params)
+
+
+    def set_relative_distance(self, positionerName, axis):
+        rel_distance = self._widget.getRelDist(positionerName, axis)
+        self.__logger.debug(f"Setting relative distance for {positionerName}, axis {axis}, relative distance {rel_distance}.")
+        self._master.positionersManager[positionerName].set_rel_move_params(rel_distance)
+
+
+    '''
+    def moveAbsolute(self, positionerName, axis):
+        """ Moves positioner by dist micrometers in the specified axis. ABSOLUTE MOVEMENT."""
+        dist = self._widget.getAbsPosition(positionerName, axis)
+        self._master.positionersManager[positionerName].moveAbsolute(dist, axis)
+        # continuisly check the position
+        while round(self._master.positionersManager[positionerName].getPosition(axis))!=dist:
+            time.sleep(0.5)
+            self.updatePosition(positionerName, axis)
+    '''
 
     @APIExport()
     def getPositionerNames(self) -> List[str]:

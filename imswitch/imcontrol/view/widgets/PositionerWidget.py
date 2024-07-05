@@ -10,7 +10,11 @@ class PositionerWidget(Widget):
     sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepAbsoluteClicked = QtCore.Signal(str, str)  # (positionerName, axis) for absolute movement
-    sigsetSpeedClicked = QtCore.Signal()  # (speed)
+    #sigsetSpeedClicked = QtCore.Signal()  # (speed)
+    
+    #sigsetIOparams1Clicked = QtCore.Signal(str, str)  # (io_params)
+    sigsetRelDistanceClicked = QtCore.Signal(str, str)  # (rel_distance)
+    sigSetIOparamsClicked = QtCore.Signal(str, str)  # (io_params)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -35,22 +39,45 @@ class PositionerWidget(Widget):
             self.pars['StepUnit' + parNameSuffix] = QtWidgets.QLabel(' µm')
 
             # add absolute movement
-            self.pars['AbsolutePosEdit' + parNameSuffix] = QtWidgets.QLineEdit('0')
+            self.pars['AbsolutePosEdit' + parNameSuffix] = QtWidgets.QLineEdit('0')             
             self.pars['AbsolutePosButton' + parNameSuffix] = guitools.BetterPushButton('Go!')
-
-            self.grid.addWidget(self.pars['Label' + parNameSuffix], 2*self.numPositioners, 0)
-            self.grid.addWidget(self.pars['Position' + parNameSuffix], 2*self.numPositioners, 1)
-            self.grid.addWidget(self.pars['UpButton' + parNameSuffix], 2*self.numPositioners, 2)
-            self.grid.addWidget(self.pars['DownButton' + parNameSuffix], 2*self.numPositioners, 3)
-            self.grid.addWidget(QtWidgets.QLabel('Step'), 2*self.numPositioners, 4)
-            self.grid.addWidget(self.pars['StepEdit' + parNameSuffix], 2*self.numPositioners, 5)
-            self.grid.addWidget(self.pars['StepUnit' + parNameSuffix], 2*self.numPositioners, 6)
             
-            # Create a new row for absolute movement
-            self.grid.addWidget(QtWidgets.QLabel('Abs: '), 2*self.numPositioners+1, 0)
-            self.grid.addWidget(self.pars['AbsolutePosEdit' + parNameSuffix], 2*self.numPositioners+1, 1)
-            self.grid.addWidget(self.pars['AbsolutePosButton' + parNameSuffix], 2*self.numPositioners+1, 2)
+            # trigger modes 
+            self.pars['trig1_mode' + parNameSuffix] = QtWidgets.QLineEdit('0')                  #TODO change to initial
+            #self.pars['set_trig1_mode' + parNameSuffix] = guitools.BetterPushButton('SET')
+            self.pars['rel_distance1' + parNameSuffix] = QtWidgets.QLineEdit('0')               #TODO change to initial
+            self.pars['rel_distance1_unit' + parNameSuffix] = QtWidgets.QLabel(' µm')
+            self.pars['set_rel_distance1' + parNameSuffix] = guitools.BetterPushButton('SET')
 
+            self.pars['trig2_mode' + parNameSuffix] = QtWidgets.QLineEdit('0')                  #TODO change to initial
+            self.pars['set_trig2_mode' + parNameSuffix] = guitools.BetterPushButton('SET')
+            #self.pars['rel_distance2' + parNameSuffix] = QtWidgets.QLineEdit('0')
+            #self.pars['rel_distance2_unit' + parNameSuffix] = QtWidgets.QLabel(' µm')
+
+            self.grid.addWidget(self.pars['Label' + parNameSuffix], 3*self.numPositioners, 0)
+            self.grid.addWidget(self.pars['Position' + parNameSuffix], 3*self.numPositioners, 1)
+            self.grid.addWidget(self.pars['UpButton' + parNameSuffix], 3*self.numPositioners, 2)
+            self.grid.addWidget(self.pars['DownButton' + parNameSuffix], 3*self.numPositioners, 3)
+            self.grid.addWidget(QtWidgets.QLabel('Step'), 3*self.numPositioners, 4)
+            self.grid.addWidget(self.pars['StepEdit' + parNameSuffix], 3*self.numPositioners, 5)
+            self.grid.addWidget(self.pars['StepUnit' + parNameSuffix], 3*self.numPositioners, 6)
+
+            # Create a new row for absolute movement
+            self.grid.addWidget(QtWidgets.QLabel('Abs: '), 3*self.numPositioners+1, 0)
+            self.grid.addWidget(self.pars['AbsolutePosEdit' + parNameSuffix], 3*self.numPositioners+1, 1)
+            self.grid.addWidget(self.pars['AbsolutePosButton' + parNameSuffix], 3*self.numPositioners+1, 2)
+
+            # add triggering stuff
+            self.grid.addWidget(QtWidgets.QLabel('IO1_mode: '), 3*self.numPositioners+2, 0)
+            self.grid.addWidget(self.pars['trig1_mode' + parNameSuffix], 3*self.numPositioners+2, 1)
+            #self.grid.addWidget(self.pars['set_trig1_mode' + parNameSuffix], 2*self.numPositioners+2, 2)
+            self.grid.addWidget(QtWidgets.QLabel('Relative IO1 move: '), 3*self.numPositioners+2, 2)
+            self.grid.addWidget(self.pars['rel_distance1' + parNameSuffix], 3*self.numPositioners+2, 3)
+            self.grid.addWidget(self.pars['rel_distance1_unit' + parNameSuffix], 3*self.numPositioners+2, 4)
+            self.grid.addWidget(self.pars['set_rel_distance1' + parNameSuffix], 3*self.numPositioners+2, 5)
+            self.grid.addWidget(QtWidgets.QLabel('IO2_mode: '), 3*self.numPositioners+2, 6)
+            self.grid.addWidget(self.pars['trig2_mode' + parNameSuffix], 3*self.numPositioners+2, 7)
+            self.grid.addWidget(self.pars['set_trig2_mode' + parNameSuffix], 3*self.numPositioners+2, 8)
             # Connect signals
             self.pars['UpButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepUpClicked.emit(positionerName, axis)
@@ -62,6 +89,20 @@ class PositionerWidget(Widget):
             self.pars['AbsolutePosButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepAbsoluteClicked.emit(positionerName, axis)
             )
+            
+            # set button trig1
+            #self.pars['set_trig1_mode' + parNameSuffix].clicked.connect(
+            #    lambda *args, axis=axis: self.sigsetIOparams1Clicked.emit(positionerName, axis)
+            #)
+            # set button relmove 1
+            self.pars['set_rel_distance1' + parNameSuffix].clicked.connect(
+                lambda *args, axis=axis: self.sigsetRelDistanceClicked.emit(positionerName, axis)
+            )
+            # set button trig2
+            self.pars['set_trig2_mode' + parNameSuffix].clicked.connect(
+                lambda *args, axis=axis: self.sigSetIOparamsClicked.emit(positionerName, axis)
+            )
+
             if speed:
                 self.pars['Speed'] = QtWidgets.QLabel(f'<strong>{0:.2f} µm/s</strong>')
                 self.pars['Speed'].setTextFormat(QtCore.Qt.RichText)
@@ -78,7 +119,7 @@ class PositionerWidget(Widget):
                     lambda *args: self.sigsetSpeedClicked.emit()
                 )
             self.numPositioners += 1
-
+    
     # absolute movement
     def getAbsPosition(self, positionerName, axis):
         """ Returns the absolute position of the  specified positioner axis in
@@ -97,6 +138,7 @@ class PositionerWidget(Widget):
         specified number of micrometers. """
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         self.pars['StepEdit' + parNameSuffix].setText(stepSize)
+        print('When is this run')
 
     def getSpeed(self):
         """ Returns the step size of the specified positioner axis in
@@ -115,6 +157,19 @@ class PositionerWidget(Widget):
     def updateSpeed(self, positionerName, axis, speed):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         self.pars['Speed' + parNameSuffix].setText(f'<strong>{speed:.2f} µm/s</strong>')
+
+    # trigger stuff
+    def getIOparams(self, positionerName, axis):
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        return (int(self.pars['trig1_mode' + parNameSuffix].text()), int(self.pars['trig2_mode' + parNameSuffix].text()))
+    
+    def getRelDist(self, positionerName, axis):
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        return float(self.pars['rel_distance1' + parNameSuffix].text())
+
+    def update_rel_distance(self, positionerName, axis, rel_distance):
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        self.pars['rel_distance1' + parNameSuffix].setText(rel_distance)
 
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'

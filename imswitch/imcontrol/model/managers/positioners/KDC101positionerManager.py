@@ -29,139 +29,149 @@ class KDC101positionerManager(PositionerManager):
             self.kdcstage = KDC101(serial_port=self._port)
             self.__logger.info(f'Successfully initialized KDC101 (name: {name}) on port {self._port}, waiting 5 seconds during homing...')
             time.sleep(5)       # need to wait for the stage to load, otherwise velparams are not available
+            
+            self._posConvFac = positionerInfo.managerProperties['posConvFac']
+            self._velConvFac = positionerInfo.managerProperties['velConvFac']
+            self._accConvFac = positionerInfo.managerProperties['accConvFac']
+            self._initialspeed = positionerInfo.managerProperties.get("initialSpeed")
+            #TODO do it properly for the speed etc
+            #self.setSpeed(self._initialspeed, positionerInfo.axes[0])     # setting the default speed to 1000 um/s, hardcoding it for now
+            #self.setAcceleration(1000, positionerInfo.axes[0])     # setting the default acceleration to 1000 um/s2, hardcoding it for now
+            
+            self.hard_coded_velparams = {'min_velocity': 0,
+                        'max_velocity': 1.5,                 # 1.5 mm/s
+                        'acceleration': 2,                   # 2 mm/s2
+                        'msg': 'mot_get_velparams',
+                        'msgid': 1045,
+                        'source': 80,
+                        'dest': 1,
+                        'chan_ident': 1}
+            
+            self.hard_coded_jogparams = {'jog_mode': 2,
+                        'step_size': 0.05,                      # 50 um or 0.05 mm
+                        'min_velocity': 0,
+                        'acceleration': 2,                    # 2 um/s2
+                        'max_velocity': 1.5,                  # 1.5 um/s
+                        'stop_mode': 2,
+                        'msg': 'mot_get_jogparams',
+                        'msgid': 1048,
+                        'source': 80,
+                        'dest': 1,
+                        'chan_ident': 1}
+        
+            
+            # hard code step size, speed and acceleration
+            self.kdcstage.set_velocity_params(self._mmpers2_to_unitspers2(self.hard_coded_velparams['acceleration']), 
+                                            self._mmpers_to_unitspers(self.hard_coded_velparams['max_velocity']))
+            
+            self.kdcstage.set_jog_params(self._mm_to_units(self.hard_coded_jogparams['step_size']), 
+                                        self._mmpers2_to_unitspers2(self.hard_coded_jogparams['acceleration']), 
+                                        self._mmpers_to_unitspers(self.hard_coded_jogparams['max_velocity']))
+
+            self.__logger.debug(f'Setting KDC101 velocity to {self.hard_coded_velparams["max_velocity"]} um/s and acceleration to {self.hard_coded_velparams["acceleration"]} um/s2')
+
+            super().__init__(positionerInfo, 
+                            name, 
+                            initialPosition={axis: self.kdcstage.status['position'] for axis in positionerInfo.axes}#,
+                            #initialSpeed={axis: self._unitspers_to_mmpers(self.kdcstage.velparams['max_velocity']) for axis in positionerInfo.axes}
+                            )
+
+            
+        
         except:
             self.__logger.error('Failed to initialize device, check connection and port')
 
-        self._posConvFac = positionerInfo.managerProperties['posConvFac']
-        self._velConvFac = positionerInfo.managerProperties['velConvFac']
-        self._accConvFac = positionerInfo.managerProperties['accConvFac']
-        self._initialspeed = positionerInfo.managerProperties.get("initialSpeed")
-        #TODO do it properly for the speed etc
-        #self.setSpeed(self._initialspeed, positionerInfo.axes[0])     # setting the default speed to 1000 um/s, hardcoding it for now
-        #self.setAcceleration(1000, positionerInfo.axes[0])     # setting the default acceleration to 1000 um/s2, hardcoding it for now
-        
-        hard_coded_velparams = {'min_velocity': 0,
-                    'max_velocity': 772970,                  # 1000 um/s
-                    'acceleration': 260,                     # 1000 um/s2
-                    'msg': 'mot_get_velparams',
-                    'msgid': 1045,
-                    'source': 80,
-                    'dest': 1,
-                    'chan_ident': 1}
-        
-        hard_coded_jogparams = {'jog_mode': 2,
-                    'step_size': 3455,
-                    'min_velocity': 0,
-                    'acceleration': 260,                     # 1000 um/s2
-                    'max_velocity': 772970,                  # 1000 um/s
-                    'stop_mode': 2,
-                    'msg': 'mot_get_jogparams',
-                    'msgid': 1048,
-                    'source': 80,
-                    'dest': 1,
-                    'chan_ident': 1}
-        self.__logger.debug(f'Setting KDC101 velocity to {hard_coded_velparams["max_velocity"]} um/s and acceleration to {hard_coded_velparams["acceleration"]} um/s2')
-        
-        self.kdcstage.set_velocity_params(hard_coded_velparams['acceleration'], hard_coded_velparams['max_velocity'])
-        self.kdcstage.set_jog_params(hard_coded_jogparams['step_size'], hard_coded_jogparams['acceleration'], hard_coded_jogparams['max_velocity'])
 
-        
-        super().__init__(positionerInfo, 
-                         name, 
-                         initialPosition={axis: self.kdcstage.status['position'] for axis in positionerInfo.axes}#,
-                         #initialSpeed={axis: self._unitspers_to_mmpers(self.kdcstage.velparams['max_velocity']) for axis in positionerInfo.axes}
-                         )
-
-    def _um_to_units(self, um):                 # usually used when stage is controlled from outside for moving a distance
+    def _mm_to_units(self, mm):                 # usually used when stage is controlled from outside for moving a distance
         '''
-        um              Distance in um given by user
+        mm              Distance in mm given by user
         Is translated into device units
         '''
-        return int(um*0.001*self._posConvFac)
+        return int(mm*self._posConvFac)
     
-    def _units_to_um(self, units):              # usually used when status is checked from device for moving a distance
+    def _units_to_mm(self, units):              # usually used when status is checked from device for moving a distance
         '''
         units           Distance in device units
-        Is translated into um
         '''
-        return (units/(self._posConvFac))*1000        # not sure about this one...
+        return units/self._posConvFac        
     
     def _mmpers_to_unitspers(self, mmps):       # used when the velocity is set by user, calculating mm/s to units/s
-        speed = mmps*(self._velConvFac*1000)     # 0.001 is to convert um to mm
+        speed = int(mmps * self._velConvFac)     
         print(f'Calculating {mmps} mmps multiplied with {self._velConvFac} to {speed} units/s')
-        return mmps*self._velConvFac
-    
-    def _unitspers_to_mmpers(self, unitspers):       # used when the velocity is status checked, calculating units/s to mm/s
-        speed = unitspers/(self._velConvFac*1000)     # 0.001 is to convert um to mm
-        print(f'Calculating {unitspers} units divided by {self._velConvFac} to {speed} um/s')
-        return round(speed, 4)
+        return speed
     
     def _mmpers2_to_unitspers2(self, mmps2):       # used when the acceleration is set by user, calculating mm/s2 to units/s2
-        acceleration = mmps2*(self._velConvFac*1000)     # 0.001 is to convert um to mm
-        print(f'Calculating {mmps2} mmps multiplied with {self._velConvFac} to {acceleration} units/s2')
-        return mmps2*self._velConvFac
+        acceleration = int(mmps2*self._accConvFac)  
+        print(f'Calculating {mmps2} mmps multiplied with {self._accConvFac} to {acceleration} units/s2')
+        return acceleration
     
     def home(self):
         self.kdcstage.home()
 
     # difference between move_jog and move_relative?
 
-    def move(self, dist, axis):
+    def move(self, dist_um, axis):
         """ Moves the positioner by the specified distance and returns the new
         position. Derived classes will update the position field manually. If
         the positioner controls multiple axes, the axis must be specified.
         In other words: move relative or jogging?
-        dist: distance in mm, is converted to um
+        dist: distance in 
         """
-        move_units = self._um_to_units(dist)
-        self.__logger.debug(f'Moving KDC101 relative {axis} by {move_units} units or {dist} um or {dist*0.001} mm')
+        move_units = self._mm_to_units(dist_um * 0.001)             # converting to mm
+        self.__logger.debug(f'Moving KDC101 relative {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_relative(int(move_units))
 
-    def setPosition(self, dist: float, axis: str):
+    def setPosition(self, dist_um: float, axis: str):
         """ Adjusts the positioner to the specified position and returns the
         new position. Derived classes will update the position field manually.
         If the positioner controls multiple axes, the axis must be specified.
         In other words: move absolute to a position in mm
         position: position in mm is converted to um, or moving?
         """
-        move_units = self._um_to_units(dist)
-        self.__logger.debug(f'Moving KDC101 absolute {axis} to {move_units} units or {dist} um or {dist*0.001} mm')
+        move_units = self._mm_to_units(dist_um * 0.001)             # converting to mm
+        self.__logger.debug(f'Moving KDC101 absolute (set position) {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_absolute(move_units)
     
-    def moveAbsolute(self, dist, axis):
-        move_units = self._um_to_units(dist)
-        self.__logger.debug(f'Moving KDC101 absolute {axis} to {move_units} units or {dist} um or {dist*0.001} mm')
+    def moveAbsolute(self, dist_um, axis):
+        move_units = self._mm_to_units(dist_um * 0.001)             # converting to mm
+        self.__logger.debug(f'Moving KDC101 absolute {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_absolute(move_units)
-
     
     def updatePosition(self):
         return self.getPosition()
 
     def getPosition(self, axis):
-        pos = self._units_to_um(self.kdcstage.status['position'])    # the stage reads it as units, is then converted to mm and then to um and returned in um
-        self.__logger.debug(f'Getting KDC101 position for axis {axis}: {pos} um')
-        return pos
+        """
+        Returns the position of the stage in um
+        """
+        pos_mm = self._units_to_mm(self.kdcstage.status['position'])    # the stage reads it as units, is then converted to mm and then to um and returned in um
+        self.__logger.debug(f'Getting KDC101 position for axis {axis}: {pos_mm} mm or {pos_mm * 1000} um')
+        return pos_mm * 1000
 
     def finalize(self):
         self.kdcstage.close()
+
     
-    def setSpeed(self, mmps, axis):      # setMove_velocity_in_units
+    # triggering related functions
+    def get_triggerIOconfig(self):
+        return self.kdcstage.trigger_params()
+    
+    def set_triggerIOconfig(self, io_params):
+        trig1_mode, trig2_mode = io_params
+        self.kdcstage.set_triggerparams(trig1_mode=trig1_mode, 
+                                        trig1_polarity=1,
+                                        trig2_mode=trig2_mode,
+                                        trig2_polarity=1)
+
+    def set_rel_move_params(self, relative_distance):
         '''
-        Setting the velocity parameters for the stage
-        set_velocity_params(acceleration, max_velocity, bay=0, channel=0)
+        Specify relative move distance of the stage for IO input triggering. See 0x0445 for details.
+        relative_distance: distance in um
         '''
-        self.__logger.debug(f'Changing KDC101 max velocity for axis {axis} to {mmps} ums')
-        self.kdcstage.set_velocity_params(self.kdcstage.velparams['acceleration'],
-                                          int(self._mmpers_to_unitspers(mmps)))
-        
-    def setAcceleration(self, mmps2, axis):      # setMove_velocity_in_units
-        '''
-        Setting the velocity parameters for the stage
-        set_velocity_params(acceleration, max_velocity, bay=0, channel=0)
-        '''
-        self.__logger.debug(f'Changing KDC101 max acceleration for axis {axis} to {mmps2} um/s2')
-        self.kdcstage.set_velocity_params(int(self._mmpers2_to_unitspers2(mmps2)),
-                                          self.kdcstage.velparams['max_velocity'])
+        units = int(relative_distance*0.001*self._posConvFac)
+        self.__logger.debug(f'relative distance: {units} units corresponding to {(units/self._posConvFac)/0.001} um')
+        self.kdcstage.set_moverelparams(relative_distance=units)
+
         
     
     #def speed(self, axis):

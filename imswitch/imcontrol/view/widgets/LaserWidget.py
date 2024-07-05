@@ -12,8 +12,8 @@ class LaserWidget(Widget):
     sigValueChanged = QtCore.Signal(str, float)  # (laserName, value)
     
     sigModEnabledChanged = QtCore.Signal(str, bool) # (laserName, modulationEnabled)
-    sigFreqChanged = QtCore.Signal(str, int)        # (laserName, frequency)
-    sigDutyCycleChanged = QtCore.Signal(str, int)   # (laserName, dutyCycle)
+    sigModPowChanged = QtCore.Signal(str, int)        # (laserName, frequency)        # slider
+    #sigDutyCycleChanged = QtCore.Signal(str, int)   # (laserName, dutyCycle)
 
     sigPresetSelected = QtCore.Signal(str)  # (presetName)
     sigLoadPresetClicked = QtCore.Signal()
@@ -84,17 +84,14 @@ class LaserWidget(Widget):
         self.layout.addLayout(self.presetsBox, 1, 0)
 
     def addLaser(self, laserName, valueUnits, valueDecimals, wavelength, valueRange=None,
-                 valueRangeStep=1, frequencyRange=(0, 0, 0)):
+                 valueRangeStep=1):     # removed frequencyRange
         """ Adds a laser module widget. valueRange is either a tuple
-        (min, max), or None (if the laser can only be turned on/off).
-        frequencyRange is either a tuple (min, max, initVal)
-        or (0, 0, 0) (if the laser is not modulated in frequency)"""
+        (min, max), or None (if the laser can only be turned on/off)."""
 
         control = LaserModule(
             valueUnits=valueUnits, valueDecimals=valueDecimals, valueRange=valueRange,
             tickInterval=5, singleStep=valueRangeStep,
-            initialPower=valueRange[0] if valueRange is not None else 0,
-            frequencyRange=frequencyRange
+            initialPower=valueRange[0] if valueRange is not None else 0
         )
         control.sigEnableChanged.connect(
             lambda enabled: self.sigEnableChanged.emit(laserName, enabled)
@@ -103,16 +100,16 @@ class LaserWidget(Widget):
             lambda value: self.sigValueChanged.emit(laserName, value)
         )
 
-        if all(num > 0 for num in frequencyRange):
-            control.sigModEnabledChanged.connect(
-                lambda enabled: self.sigModEnabledChanged.emit(laserName, enabled)
-            )
-            control.sigFreqChanged.connect(
-                lambda frequency: self.sigFreqChanged.emit(laserName, frequency)
-            )
-            control.sigDutyCycleChanged.connect(
-                lambda dutyCycle: self.sigDutyCycleChanged.emit(laserName, dutyCycle)
-            )
+        # laser modulation buttons
+        control.sigModEnabledChanged.connect(
+            lambda enabled: self.sigModEnabledChanged.emit(laserName, enabled)
+        )
+        control.sigModPowChanged.connect(             # slider
+            lambda modPower: self.sigModPowChanged.emit(laserName, modPower)
+        )
+        #control.sigDutyCycleChanged.connect(
+        #    lambda dutyCycle: self.sigDutyCycleChanged.emit(laserName, dutyCycle)
+        #)
 
         nameLabel = QtWidgets.QLabel(laserName)
         color = colorutils.wavelengthToHex(wavelength)
@@ -157,13 +154,17 @@ class LaserWidget(Widget):
         uses. """
         self.laserModules[laserName].setValue(value)
     
-    def setModulationFrequency(self, laserName, value):
-        """ Sets the modulation frequency of the specified laser. """
-        self.laserModules[laserName].setModulationFrequency(value)
+    #def setModulationFrequency(self, laserName, value):
+    #    """ Sets the modulation frequency of the specified laser. """
+    #    self.laserModules[laserName].setModulationFrequency(value)
+    
+    def setModulationPower(self, laserName, value):
+        """ Sets the modulation power of the specified laser. """
+        self.laserModules[laserName].setModulationPower(value)
 
-    def setModulationDutyCycle(self, laserName, value):
-        """ Sets the modulation duty cycle of the specified laser. """
-        self.laserModules[laserName].setModulationDutyCycle(value)
+    #def setModulationDutyCycle(self, laserName, value):
+    #    """ Sets the modulation duty cycle of the specified laser. """
+    #    self.laserModules[laserName].setModulationDutyCycle(value)
 
     def getCurrentPreset(self):
         """ Returns the name of the currently selected preset. """
@@ -234,16 +235,15 @@ class LaserModule(QtWidgets.QWidget):
     sigValueChanged = QtCore.Signal(float)  # (value)
 
     sigModEnabledChanged = QtCore.Signal(bool) # (modulation enabled)
-    sigFreqChanged = QtCore.Signal(int)        # (frequency)
-    sigDutyCycleChanged = QtCore.Signal(int)   # (duty cycle)
+    sigModPowChanged = QtCore.Signal(int)        # (Modulation power)       # slider
+    #sigDutyCycleChanged = QtCore.Signal(int)   # (duty cycle)
 
     def __init__(self, valueUnits, valueDecimals, valueRange, tickInterval, singleStep,
-                 initialPower, frequencyRange, *args, **kwargs):
+                 initialPower, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.valueDecimals = valueDecimals
 
         isBinary = valueRange is None
-        isModulated = all(num > 0 for num in frequencyRange)
 
         # Graphical elements
         self.setPointLabel = QtWidgets.QLabel(f'Setpoint [{valueUnits}]')
@@ -260,7 +260,6 @@ class LaserModule(QtWidgets.QWidget):
         self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                            decimals=valueDecimals)
         self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
-
         if not isBinary:
             valueRangeMin, valueRangeMax = valueRange
 
@@ -284,60 +283,40 @@ class LaserModule(QtWidgets.QWidget):
         self.powerGrid.addWidget(self.slider, 0, 3, 2, 1)
         self.powerGrid.addWidget(self.maxpower, 0, 4, 2, 1)
         
-        if isModulated:
-            freqRangeMin, freqRangeMax, initialFrequency = frequencyRange
-            # laser modulation widgets
-            # enable button
-            self.modulationEnable = guitools.BetterPushButton("ON")
-            self.modulationEnable.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+        # laser modulation widgets
+        # enable button
+        self.modulationEnable = guitools.BetterPushButton("ON")
+        self.modulationEnable.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
                                             QtWidgets.QSizePolicy.Expanding)
-            self.modulationEnable.setCheckable(True)
+        self.modulationEnable.setCheckable(True)
 
-            # frequency slider
-            self.modulationFrequencyLabel = QtWidgets.QLabel("Frequency [Hz]")
-            self.modulationFrequencyLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            self.modulationFrequencyEdit = QtWidgets.QLineEdit(str(initialFrequency))
-            self.modulationFrequencyEdit.setFixedWidth(50)
-            self.modulationFrequencyEdit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            self.modulationFrequencyMinLabel = QtWidgets.QLabel(str(freqRangeMin))
-            self.modulationFrequencyMaxLabel = QtWidgets.QLabel(str(freqRangeMax))
-            self.modulationFrequencySlider = guitools.BetterSlider(QtCore.Qt.Horizontal)
-            self.modulationFrequencySlider.setRange(freqRangeMin, freqRangeMax)
-            self.modulationFrequencySlider.setValue(initialFrequency)
+        # frequency slider, but is not the normal modulation power slider without frequency!
+        self.modulationPowerLabel = QtWidgets.QLabel("Power [Hz]")              # was frequency before
+        self.modulationPowerLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.modulationPowerEdit = QtWidgets.QLineEdit(str(5))
+        self.modulationPowerEdit.setFixedWidth(50)
+        self.modulationPowerEdit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.modulationPowerMinLabel = QtWidgets.QLabel(str(valueRangeMin))
+        self.modulationPowerMaxLabel = QtWidgets.QLabel(str(valueRangeMax))
+        self.modulationPowerSlider = guitools.BetterSlider(QtCore.Qt.Horizontal)
+        self.modulationPowerSlider.setRange(valueRangeMin, valueRangeMax)
+        self.modulationPowerSlider.setValue(5)
 
-            # duty cycle slider
-            self.modulationDutyCycleLabel = QtWidgets.QLabel("Duty cycle [%]")
-            self.modulationDutyCycleLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            self.modulationDutyCycleEdit = QtWidgets.QLineEdit(str(50))
-            self.modulationDutyCycleEdit.setFixedWidth(50)
-            self.modulationDutyCycleEdit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            self.modulationDutyCycleMinLabel = QtWidgets.QLabel(str(1))
-            self.modulationDutyCycleMaxLabel = QtWidgets.QLabel(str(99))
-            self.modulationDutyCycleMinLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            self.modulationDutyCycleMaxLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-            self.modulationDutyCycleSlider = guitools.BetterSlider(QtCore.Qt.Horizontal)
-            self.modulationDutyCycleSlider.setRange(1, 99)
-            self.modulationDutyCycleSlider.setValue(50)
+        self.modulationGroup = QtWidgets.QGroupBox("Digital modulation")      # was frequency modulation before
+        self.modulationLayout = QtWidgets.QGridLayout() 
 
-            self.modulationGroup = QtWidgets.QGroupBox("Frequency modulation")
-            self.modulationLayout = QtWidgets.QGridLayout()
+        self.modulationLayout.addWidget(self.modulationPowerLabel, 0, 0)
+        self.modulationLayout.addWidget(self.modulationPowerEdit, 0, 1)
+        self.modulationLayout.addWidget(self.modulationPowerMinLabel, 0, 2)
+        self.modulationLayout.addWidget(self.modulationPowerSlider, 0, 3)
+        self.modulationLayout.addWidget(self.modulationPowerMaxLabel, 0, 4)
+        
+        self.modulationLayout.addWidget(self.modulationEnable, 0, 5, 2, 1)
+        self.modulationGroup.setLayout(self.modulationLayout)
 
-            self.modulationLayout.addWidget(self.modulationFrequencyLabel, 0, 0)
-            self.modulationLayout.addWidget(self.modulationFrequencyEdit, 0, 1)
-            self.modulationLayout.addWidget(self.modulationFrequencyMinLabel, 0, 2)
-            self.modulationLayout.addWidget(self.modulationFrequencySlider, 0, 3)
-            self.modulationLayout.addWidget(self.modulationFrequencyMaxLabel, 0, 4)
-
-            self.modulationLayout.addWidget(self.modulationDutyCycleLabel, 1, 0)
-            self.modulationLayout.addWidget(self.modulationDutyCycleEdit, 1, 1)
-            self.modulationLayout.addWidget(self.modulationDutyCycleMinLabel, 1, 2)
-            self.modulationLayout.addWidget(self.modulationDutyCycleSlider, 1, 3)
-            self.modulationLayout.addWidget(self.modulationDutyCycleMaxLabel, 1, 4)
-            self.modulationLayout.addWidget(self.modulationEnable, 0, 5, 2, 1)
-            self.modulationGroup.setLayout(self.modulationLayout)
-
-            self.powerGrid.addWidget(self.modulationGroup, 2, 0, 1, 5)
-                
+        self.powerGrid.addWidget(self.modulationGroup, 2, 0, 1, 5)
+        
+        # laser on push button
         self.enableButton = guitools.BetterPushButton('ON')
         self.enableButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
                                         QtWidgets.QSizePolicy.Expanding)
@@ -364,20 +343,19 @@ class LaserModule(QtWidgets.QWidget):
             lambda: self.sigValueChanged.emit(self.getValue())
         )
 
-        if isModulated:
-            self.modulationEnable.toggled.connect(self.sigModEnabledChanged)
-            self.modulationFrequencySlider.valueChanged.connect(
-                lambda value: self.sigFreqChanged.emit(value)
-            )
-            self.modulationFrequencyEdit.returnPressed.connect(
-                lambda: self.sigFreqChanged.emit(self.getFrequency())
-            )
-            self.modulationDutyCycleSlider.valueChanged.connect(
-                lambda value: self.sigDutyCycleChanged.emit(value)
-            )
-            self.modulationDutyCycleEdit.returnPressed.connect(
-                lambda: self.sigDutyCycleChanged.emit(self.getDutyCycle())
-            )
+        self.modulationEnable.toggled.connect(self.sigModEnabledChanged)
+        self.modulationPowerSlider.valueChanged.connect(
+            lambda value: self.sigModPowChanged.emit(value)       # slider
+        )
+        self.modulationPowerEdit.returnPressed.connect(
+            lambda: self.sigModPowChanged.emit(self.getModulationPower())    # slider
+        )
+        #self.modulationDutyCycleSlider.valueChanged.connect(
+        #    lambda value: self.sigDutyCycleChanged.emit(value)
+        #)
+        #self.modulationDutyCycleEdit.returnPressed.connect(
+        #    lambda: self.sigDutyCycleChanged.emit(self.getDutyCycle())
+        #)
 
     def isActive(self):
         """ Returns whether the laser is powered on. """
@@ -388,10 +366,15 @@ class LaserModule(QtWidgets.QWidget):
         uses. """
         return float(self.setPointEdit.text())
     
-    def getFrequency(self):
-        """ Returns the selected frequency of the laser.
+    #def getFrequency(self):
+    #    """ Returns the selected frequency of the laser.
+    #    """
+    #    return int(self.modulationPowerEdit.text())
+    
+    def getModulationPower(self):
+        """ Returns the selected modulation power of the laser.
         """
-        return int(self.modulationFrequencyEdit.text())
+        return int(self.modulationPowerEdit.text())
     
     def getDutyCycle(self):
         """ Returns the selected duty cycle of the laser.
@@ -417,15 +400,20 @@ class LaserModule(QtWidgets.QWidget):
         self.setPointEdit.setText(f'%.{self.valueDecimals}f' % value)
         self.slider.setValue(value)
     
-    def setModulationFrequency(self, value):
-        """ Sets the laser modulation frequency. """
-        self.modulationFrequencyEdit.setText(f"{value}")
-        self.modulationFrequencySlider.setValue(value)
+    #def setModulationFrequency(self, value):
+    #    """ Sets the laser modulation frequency. """
+    #    self.modulationFrequencyEdit.setText(f"{value}")
+    #    self.modulationFrequencySlider.setValue(value)
+
+    def setModulationPower(self, value):
+        """ Sets the laser modulation power. """
+        self.modulationPowerEdit.setText(f"{value}")
+        self.modulationPowerSlider.setValue(value)
     
-    def setModulationDutyCycle(self, value):
-        """ Sets the laser modulation duty cycle. """
-        self.modulationDutyCycleEdit.setText(f"{value}")
-        self.modulationDutyCycleSlider.setValue(value)
+    #def setModulationDutyCycle(self, value):
+    #    """ Sets the laser modulation duty cycle. """
+    #    self.modulationDutyCycleEdit.setText(f"{value}")
+    #    self.modulationDutyCycleSlider.setValue(value)
 
 
 # Copyright (C) 2017 Federico Barabas 2020-2021 ImSwitch developers
