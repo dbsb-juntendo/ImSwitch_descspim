@@ -12,7 +12,7 @@ class AlignAverageWidget(Widget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        print('________________init alignaverage')
         # Graphical elements
         self.roiButton = guitools.BetterPushButton('Show ROI')
         self.roiButton.setCheckable(True)

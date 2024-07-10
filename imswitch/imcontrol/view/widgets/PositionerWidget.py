@@ -152,7 +152,7 @@ class PositionerWidget(Widget):
 
     def updatePosition(self, positionerName, axis, position):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['Position' + parNameSuffix].setText(f'<strong>{position:.2f} µm</strong>')
+        self.pars['Position' + parNameSuffix].setText(f'<strong>{position:.4f} µm</strong>')
 
     def updateSpeed(self, positionerName, axis, speed):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
@@ -169,7 +169,7 @@ class PositionerWidget(Widget):
 
     def update_rel_distance(self, positionerName, axis, rel_distance):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['rel_distance1' + parNameSuffix].setText(rel_distance)
+        self.pars['rel_distance1' + parNameSuffix].setText(str(rel_distance))        # maybe not correct like this, can you set text in a line edit?
 
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'

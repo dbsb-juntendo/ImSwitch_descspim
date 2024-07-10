@@ -18,6 +18,9 @@ In 1 mm there are 34554.96 encoder counts/device units
 #    def __init__(self):
 #        self.managerProperties = {'port': 'COM15', 'posConvFac': 1919.6418578623391, 'velConvFac': 42941.66, "accConvFac": 14.66}
 
+#TODO
+#class KDC101_Trigger(KDC101):          
+
 class KDC101positionerManager(PositionerManager):
 
     def __init__(self, positionerInfo, name, **lowLevelManagers):
@@ -27,9 +30,8 @@ class KDC101positionerManager(PositionerManager):
         try:
             self.__logger.debug(f'Initializing KDC101 (name: {name}) on port {self._port}')
             self.kdcstage = KDC101(serial_port=self._port)
-            self.__logger.info(f'Successfully initialized KDC101 (name: {name}) on port {self._port}, waiting 5 seconds during homing...')
-            time.sleep(5)       # need to wait for the stage to load, otherwise velparams are not available
-            
+            self.__logger.info(f'Successfully initialized KDC101 (name: {name}) on port {self._port}, homing...')
+            time.sleep(5)
             self._posConvFac = positionerInfo.managerProperties['posConvFac']
             self._velConvFac = positionerInfo.managerProperties['velConvFac']
             self._accConvFac = positionerInfo.managerProperties['accConvFac']
@@ -64,9 +66,9 @@ class KDC101positionerManager(PositionerManager):
             self.kdcstage.set_velocity_params(self._mmpers2_to_unitspers2(self.hard_coded_velparams['acceleration']), 
                                             self._mmpers_to_unitspers(self.hard_coded_velparams['max_velocity']))
             
-            self.kdcstage.set_jog_params(self._mm_to_units(self.hard_coded_jogparams['step_size']), 
-                                        self._mmpers2_to_unitspers2(self.hard_coded_jogparams['acceleration']), 
-                                        self._mmpers_to_unitspers(self.hard_coded_jogparams['max_velocity']))
+            #self.kdcstage.set_jog_params(self._mm_to_units(self.hard_coded_jogparams['step_size']), 
+            #                            self._mmpers2_to_unitspers2(self.hard_coded_jogparams['acceleration']), 
+            #                            self._mmpers_to_unitspers(self.hard_coded_jogparams['max_velocity']))
 
             self.__logger.debug(f'Setting KDC101 velocity to {self.hard_coded_velparams["max_velocity"]} um/s and acceleration to {self.hard_coded_velparams["acceleration"]} um/s2')
 
@@ -105,8 +107,8 @@ class KDC101positionerManager(PositionerManager):
         print(f'Calculating {mmps2} mmps multiplied with {self._accConvFac} to {acceleration} units/s2')
         return acceleration
     
-    def home(self):
-        self.kdcstage.home()
+    #def home(self):
+    #    self.kdcstage.home()
 
     # difference between move_jog and move_relative?
 
@@ -120,6 +122,11 @@ class KDC101positionerManager(PositionerManager):
         move_units = self._mm_to_units(dist_um * 0.001)             # converting to mm
         self.__logger.debug(f'Moving KDC101 relative {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_relative(int(move_units))
+        end_position = self.kdcstage.status['position'] + move_units
+        while self.kdcstage.status['position'] != end_position:                     # doesnt fully work
+            time.sleep(0.5)
+            self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {end_position}')
+        self.__logger.debug(f'KDC101 relative movement finished')
 
     def setPosition(self, dist_um: float, axis: str):
         """ Adjusts the positioner to the specified position and returns the
@@ -129,13 +136,21 @@ class KDC101positionerManager(PositionerManager):
         position: position in mm is converted to um, or moving?
         """
         move_units = self._mm_to_units(dist_um * 0.001)             # converting to mm
-        self.__logger.debug(f'Moving KDC101 absolute (set position) {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
+        self.__logger.debug(f'Moving KDC101 absolute {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_absolute(move_units)
+        while self.kdcstage.status['position'] != move_units:                     # doesnt fully work
+            time.sleep(0.5)
+            self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {move_units}')
+        self.__logger.debug(f'KDC101 absolute movement finished')
     
     def moveAbsolute(self, dist_um, axis):
         move_units = self._mm_to_units(dist_um * 0.001)             # converting to mm
         self.__logger.debug(f'Moving KDC101 absolute {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_absolute(move_units)
+        while self.kdcstage.status['position'] != move_units:                     # doesnt fully work
+            time.sleep(0.5)
+            self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {move_units}')
+        self.__logger.debug(f'KDC101 absolute movement finished')
     
     def updatePosition(self):
         return self.getPosition()

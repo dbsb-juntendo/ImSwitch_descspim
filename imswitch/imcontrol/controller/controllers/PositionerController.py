@@ -17,8 +17,6 @@ class PositionerController(ImConWidgetController):
 
         # Set up positioners
         for pName, pManager in self._master.positionersManager:
-            if not pManager.forPositioning:
-                continue
             speed = hasattr(pManager, 'speed')
             self._widget.addPositioner(pName, pManager.axes, speed)
             axis = pManager.axes[0]                                                     # on this KDC101 stage is only one axis
@@ -29,6 +27,8 @@ class PositionerController(ImConWidgetController):
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigSetSpeed.connect(lambda speed: self.setSpeedGUI(speed, axis))
+        self._commChannel.sigUpdateStagePosition.connect(self.updatePosition)               # for the zalignment widget
+        self._commChannel.sigUpdateRelDistance.connect(self.updateRelDistance)
 
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
@@ -42,11 +42,8 @@ class PositionerController(ImConWidgetController):
         # relative movement setting io channel 1
         self._widget.sigsetRelDistanceClicked.connect(self.set_relative_distance)
 
-    def closeEvent(self):
-        self._master.positionersManager.execOnAll(
-            lambda p: [p.setPosition(0, axis) for axis in p.axes],
-            condition = lambda p: p.resetOnClose
-        )
+    def closeEvent(self):                               
+        self.__logger.debug('Closing PositionerController, but not doing anything.')
 
     def getPos(self):
         return self._master.positionersManager.execOnAll(lambda p: p.position)
@@ -57,23 +54,14 @@ class PositionerController(ImConWidgetController):
     def move(self, positionerName, axis, dist):
         """ Moves positioner by dist micrometers in the specified axis. RELATIVE MOVEMENT."""
         initial_position = round(self._master.positionersManager[positionerName].getPosition(axis))
-        print('_________________initial_position + dist', initial_position+dist)
         self._master.positionersManager[positionerName].move(dist, axis)
-        # continuisly check the position
-        while round(self._master.positionersManager[positionerName].getPosition(axis))!=initial_position+dist:
-            time.sleep(0.5)
-            print('_________________position', round(self._master.positionersManager[positionerName].getPosition(axis)))
-            print('_________________initial_position + dist', initial_position+dist)
-            self.updatePosition(positionerName, axis)
+        self.updatePosition(positionerName, axis)
     
     def moveAbsolute(self, positionerName, axis):
         """ Moves positioner by dist micrometers in the specified axis. ABSOLUTE MOVEMENT."""
         dist = self._widget.getAbsPosition(positionerName, axis)
         self._master.positionersManager[positionerName].moveAbsolute(dist, axis)
-        # continuisly check the position
-        while round(self._master.positionersManager[positionerName].getPosition(axis))!=dist:
-            time.sleep(0.5)
-            self.updatePosition(positionerName, axis)
+        self.updatePosition(positionerName, axis)
 
     def setPos(self, positionerName, axis, position):
         """ Moves the positioner to the specified position in the specified axis. """
@@ -148,6 +136,8 @@ class PositionerController(ImConWidgetController):
         self.__logger.debug(f"Setting relative distance for {positionerName}, axis {axis}, relative distance {rel_distance}.")
         self._master.positionersManager[positionerName].set_rel_move_params(rel_distance)
 
+    def updateRelDistance(self, positionerName, axis, rel_distance):
+        self._widget.update_rel_distance(positionerName, axis, rel_distance)
 
     '''
     def moveAbsolute(self, positionerName, axis):

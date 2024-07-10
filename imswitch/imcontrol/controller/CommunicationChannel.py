@@ -96,6 +96,10 @@ class CommunicationChannel(SignalInterface):
 
     sigNewFrame = Signal()
 
+    #Zalignment signal
+    sigUpdateStagePosition = Signal(str, str)   # (stageName, axisName)
+    sigUpdateRelDistance = Signal(str, str, float)   # (stageName, axisName, relDistance)
+
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)

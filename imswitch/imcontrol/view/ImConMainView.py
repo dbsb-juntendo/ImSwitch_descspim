@@ -68,6 +68,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'RotationScan': _DockInfo(name='RotationScan', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
             'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
+            'ZAlignment': _DockInfo(name='Z Alignment Tool', yPosition=3),              
             'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
             'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
