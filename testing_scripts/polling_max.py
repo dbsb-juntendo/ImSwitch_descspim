@@ -6,13 +6,12 @@ import time
 
 os.add_dll_directory(os.path.abspath('./imswitch/imcontrol/model/interfaces/thorlabs_tsi_sdk/dll/')) # add the location of the SDK DLLs to the PATH
 
-num_frames = 2
+num_frames = 100
 save_path = 'C:/Users/alm/Data/240520/thorlabs_cam_sdk/'
 # create folder if it doesn't exist
 if not os.path.exists(save_path):
     os.makedirs(save_path)
-exposure_time = 1000 # in miliseconds
-exposure_time = exposure_time * 100 # convert to microseconds
+exposure_time = 10 * 1000 # in miliseconds # convert to microseconds
 with TLCameraSDK() as sdk:
     available_cameras = sdk.discover_available_cameras()
     if len(available_cameras) < 1:
@@ -27,14 +26,15 @@ with TLCameraSDK() as sdk:
         camera.trigger_polarity = TRIGGER_POLARITY.ACTIVE_HIGH
         camera.frames_per_trigger_zero_for_unlimited = 0
         camera.image_poll_timeout_ms = 10000
+        camera.operation_mode = OPERATION_MODE.SOFTWARE_TRIGGERED
 
         print('exposure time in ms: ',camera.exposure_time_us/1000)
         camera.arm(2)
         
         t0 = time.time()
+        camera.issue_software_trigger()
         for i in range(num_frames):
-            if camera.operation_mode == OPERATION_MODE.SOFTWARE_TRIGGERED:
-                camera.issue_software_trigger()
+            
             frame = camera.get_pending_frame_or_null()
             
             if frame is not None:
@@ -42,8 +42,9 @@ with TLCameraSDK() as sdk:
                 
                 image_buffer_copy = np.copy(frame.image_buffer)
                 time_after_frame = time.time()
-                print("time taken to get frame in ms: ", (time_after_frame - t0)*1000)
-                #tifffile.imwrite(save_path + 'frame_' + str(frame.frame_count) + '.tif', image_buffer_copy)
+                #print(time_after_frame - t0)
+                #print("time taken to get frame in ms: ", (time_after_frame - t0)*1000)
+                tifffile.imwrite(save_path + 'frame_' + str(frame.frame_count) + '.tif', image_buffer_copy)
             else:
                 print("timeout reached during polling, program exiting...")
                 break

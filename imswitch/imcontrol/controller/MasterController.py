@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager
+    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager, ArduinoManager
 )
 
 
@@ -14,6 +14,7 @@ class MasterController:
     def __init__(self, setupInfo, commChannel, moduleCommChannel):
         self.__logger = initLogger(self)
         self.__setupInfo = setupInfo
+        print('------------------', self.__setupInfo)
         self.__commChannel = commChannel
         self.__moduleCommChannel = moduleCommChannel
 
@@ -39,6 +40,8 @@ class MasterController:
 
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
+
+        self.arduinoManager = ArduinoManager(self.__setupInfo.arduino)
 
         if self.__setupInfo.microscopeStand:
             self.standManager = StandManager(self.__setupInfo.microscopeStand,

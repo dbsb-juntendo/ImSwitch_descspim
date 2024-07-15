@@ -53,7 +53,8 @@ class ViewSetupInfo(SetupInfo):
     - ``FocusLock`` (focus lock widget; requires ``focusLock`` field to be
       defined)
     - ``Autofocus`` (autofocus widget; requires ``focusLock`` field to be
-      defined)      
+      defined)   
+    - ``Arduino`` (Arduino widgetrequires ``arduino`` field to be defined)     
     - ``SLM`` (SLM widget; requires ``slm`` field to be defined)
     - ``Laser`` (laser control widget)
     - ``Positioner`` (positioners widget)

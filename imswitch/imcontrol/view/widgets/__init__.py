@@ -1,6 +1,7 @@
 from .AlignAverageWidget import AlignAverageWidget
 from .AlignmentLineWidget import AlignmentLineWidget
 from .AlignXYWidget import AlignXYWidget
+from .ArduinoWidget import ArduinoWidget
 from .AutofocusWidget import AutofocusWidget
 from .basewidgets import WidgetFactory
 from .BeadRecWidget import BeadRecWidget

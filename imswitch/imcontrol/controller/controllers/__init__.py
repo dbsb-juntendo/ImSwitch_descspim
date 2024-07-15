@@ -1,6 +1,7 @@
 from .AlignAverageController import AlignAverageController
 from .AlignmentLineController import AlignmentLineController
 from .AlignXYController import AlignXYController
+from .ArduinoController import ArduinoController
 from .AufofocusController import AutofocusController
 from .BeadRecController import BeadRecController
 from .ConsoleController import ConsoleController

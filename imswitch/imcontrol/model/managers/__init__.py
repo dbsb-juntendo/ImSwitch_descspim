@@ -1,3 +1,4 @@
+from .ArduinoManager import ArduinoManager
 from .DetectorsManager import DetectorsManager, NoDetectorsError
 from .LasersManager import LasersManager
 from .MultiManager import MultiManager

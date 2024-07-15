@@ -100,6 +100,12 @@ class RS232Info:
     managerProperties: Dict[str, Any]
     """ Properties to be read by the RS232 manager. """
 
+@dataclass(frozen=True)
+class ArduinoInfo:
+    port: str
+    """ Port number of the Arduino. (COM3)"""
+    baudrate: int
+    """ Baudrate of the Arduino. (9600)"""
 
 @dataclass(frozen=True)
 class SLMInfo:
@@ -291,6 +297,8 @@ class SetupInfo:
     managers will require a corresponding RS232 connection to be referenced in
     their properties.
     """
+    arduino: Optional[ArduinoInfo] = field(default_factory=lambda: None)
+    """ Arduino settings. Required to be defined to use Arduino functionality. """
 
     slm: Optional[SLMInfo] = field(default_factory=lambda: None)
     """ SLM settings. Required to be defined to use SLM functionality. """

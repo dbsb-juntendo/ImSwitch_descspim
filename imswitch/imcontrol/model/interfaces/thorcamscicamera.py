@@ -243,7 +243,7 @@ class CameraThorCamSci:
         chunk = np.array(self.frame_buffer)
         frameids = np.array(self.frameid_buffer)
         #self.flushBuffer()
-        self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
+        #self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
         return chunk
     
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):

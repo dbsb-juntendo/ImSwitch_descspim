@@ -61,6 +61,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
             'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
+            'Arduino': _DockInfo(name='Arduino', yPosition=1),
             'Rotator': _DockInfo(name='Rotator', yPosition=1),
             'MotCorr': _DockInfo(name='Motorized Correction Collar', yPosition=1),
             'SLM': _DockInfo(name='SLM', yPosition=2),
