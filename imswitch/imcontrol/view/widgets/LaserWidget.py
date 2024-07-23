@@ -291,7 +291,7 @@ class LaserModule(QtWidgets.QWidget):
         self.modulationEnable.setCheckable(True)
 
         # frequency slider, but is not the normal modulation power slider without frequency!
-        self.modulationPowerLabel = QtWidgets.QLabel("Power [Hz]")              # was frequency before
+        self.modulationPowerLabel = QtWidgets.QLabel("Power [mW]")              # was frequency before
         self.modulationPowerLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.modulationPowerEdit = QtWidgets.QLineEdit(str(5))
         self.modulationPowerEdit.setFixedWidth(50)

@@ -57,35 +57,19 @@ class ZAlignmentController(ImConWidgetController):
     def calculate(self):
         posConvFac = [(pName, pManager) for pName, pManager in self._master.positionersManager if pManager.forPositioning][0][1]._posConvFac
         posConvFac = (1 / posConvFac) * 1000           # to µm/du
-        print("posConvFac", posConvFac)
         req_zstep = self._widget.getZstep()            # in µm
         req_zstep_du = req_zstep * posConvFac * 1000   # in du
-        print("req_zstep", req_zstep)
-        print("req_zstep_du", req_zstep_du)
-
+        
         pos1s, pos1c, pos2s, pos2c  = [float(i.split()[1]) for i in self._widget.getPositions()]
-        print("pos1s", pos1s)
-        print("pos1c", pos1c)
-        print("pos2s", pos2s)
-        print("pos2c", pos2c)
         factor = abs(pos1s - pos2s) / abs(pos1c - pos2c)
-        print("factor", factor)
         du_camera = [i for i in range(1, 40)]                          # device units camera
-        print("du_camera", du_camera)
         dist_camera = [i*posConvFac for i in du_camera]               # distance camera in µm
-        print("dist_camera", dist_camera)
         dist_sample = [i*factor for i in dist_camera]                   # distance sample in µm
-        print("dist_sample", dist_sample)
         du_sample = [i/posConvFac for i in dist_sample]                 # device units sample
-        print("du_sample", du_sample)
-        result = [(i, du) for i, du in enumerate(du_sample) if abs(int(du) - du) <= 0.1]
-        print("result", result)
+        result = [(i, du) for i, du in enumerate(du_sample) if abs(round(du) - du) <= 0.1]
         closest_du = min(result, key=lambda x: abs(x[1] - req_zstep_du))
-        print("closest_du", closest_du) 
         sample_zstep = closest_du[1] * posConvFac
-        print("sample_zstep", sample_zstep)
         camera_zstep = dist_camera[closest_du[0]]
-        print("camera_zstep", camera_zstep)
         self._widget.updateResults(factor, sample_zstep, camera_zstep)
         
     def moveToPos1(self):
@@ -98,7 +82,6 @@ class ZAlignmentController(ImConWidgetController):
 
     def moveSampleCamera(self, pos_c, pos_s):
         sample_stage, camera_stage = self._getStages()
-        print("_________________________move to pos1 ", pos_s)
         self._master.positionersManager[sample_stage[0]].moveAbsolute(float(pos_s.split()[1]), sample_stage[1].axes[0])       # move to pos1 sample
         self._commChannel.sigUpdateStagePosition.emit(sample_stage[0], sample_stage[1].axes[0])    #, new_pos)   # new  
         self._master.positionersManager[camera_stage[0]].moveAbsolute(float(pos_c.split()[1]), camera_stage[1].axes[0])       # move to pos1 camera                                 

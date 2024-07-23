@@ -123,6 +123,9 @@ class ThorCamSciManager(DetectorManager):
         value = self._camera.getPropertyValue(name)
         return value
 
+    def getLastImage(self):
+        return self._camera.getLastImage()
+
     def getChunk(self):
         """Get the latest chunk/buffer from the camera. Can be software-based queue or hardware-based buffer."""
         try:
@@ -134,18 +137,22 @@ class ThorCamSciManager(DetectorManager):
         """Remove all the buffers from the camera's buffer queue."""
         self._camera.flushBuffer()
 
-    def startAcquisition(self):
+    def startAcquisition(self, liveView=False):
         """Starts the acquisition process."""
         if self._camera.model == "mock":
             self.__logger.debug('We could attempt to reconnect the camera')
             pass
             
         if not self._running:
-            self._camera.start_live()
-            self._running = True
-            self.__logger.debug('startlive, operation mode is')
-            print({self._camera.getPropertyValue('operation_mode')})
-
+            if liveView:
+                self._camera.start_live()
+                self._running = True
+                self.__logger.debug('startlive')
+            else:
+                self.__logger.debug('start_record')
+                self._camera.start_record()
+                self._running = True
+            
     def stopAcquisition(self):
         """Stop the acquisition process."""
         if self._running:

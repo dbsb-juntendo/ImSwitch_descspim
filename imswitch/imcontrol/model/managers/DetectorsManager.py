@@ -101,7 +101,7 @@ class DetectorsManager(MultiManager, SignalInterface):
             handle = np.random.randint(2 ** 31)
 
             # Add to handle list and set enable acquisition/LV flags if not already enabled
-            if not liveView:
+            if not liveView:        # if recording
                 self._activeAcqHandles.append(handle)
                 enableLV = False
             else:
@@ -113,7 +113,7 @@ class DetectorsManager(MultiManager, SignalInterface):
 
         # Do actual enabling
         if enableAcq:
-            self.execOnAll(lambda c: c.startAcquisition(), condition=lambda c: c.forAcquisition)
+            self.execOnAll(lambda c: c.startAcquisition(liveView=liveView), condition=lambda c: c.forAcquisition)
             self.sigAcquisitionStarted.emit()
         if enableLV:
             sleep(0.3)

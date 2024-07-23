@@ -17,7 +17,8 @@ class PyCobolt0601LaserManager(LaserManager):
     def __init__(self, laserInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
-        self._port = laserInfo.managerProperties['digitalPorts'][0]
+        self._port = laserInfo.managerProperties['port']
+        self._ttlLine = laserInfo.managerProperties['digitalLine']
         self.__logger.debug(f'Initializing Cobolt0601-DPL laser (name: {name}) on port {self._port}')
 
         try:    

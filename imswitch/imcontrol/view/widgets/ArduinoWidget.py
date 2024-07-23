@@ -7,35 +7,43 @@ class ArduinoWidget(Widget):
     ''' Widget to control the ELL9 slider through Arduino.'''
 
     sigHomeClicked = QtCore.Signal()                
-    sigSetPosClicked = QtCore.Signal()           
+    sigSetPos1Clicked = QtCore.Signal()
+    sigSetPos2Clicked = QtCore.Signal()
+    sigSetPos3Clicked = QtCore.Signal()
+    sigSetPos4Clicked = QtCore.Signal()           
     sigAddRowClicked = QtCore.Signal()     
     sigRemoveRowClicked = QtCore.Signal()
     sigSendToArduinoClicked = QtCore.Signal()  
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         self.homeButton = guitools.BetterPushButton('Home')
-        self.setPosLabel = QtWidgets.QLabel('Set Position (1-4): ')
-        #TODO # at some point this should be the filter cube names
-        self.setPosEdit = QtWidgets.QLineEdit('1')                      
-        self.setPosButton = guitools.BetterPushButton('Set')
+        self.pos1button = guitools.BetterPushButton('Pos: 1')
+        self.pos2button = guitools.BetterPushButton('Pos: 2')
+        self.pos3button = guitools.BetterPushButton('Pos: 3')
+        self.pos4button = guitools.BetterPushButton('Pos: 4')
+        #self.setPosLabel = QtWidgets.QLabel('Set Position (1-4): ')
+        #self.setPosEdit = QtWidgets.QLineEdit('1')                      
+        #self.setPosButton = guitools.BetterPushButton('Set')
 
         self.addRowButton = guitools.BetterPushButton('+')
         self.removeRowButton = guitools.BetterPushButton('-')
         self.sendToArduino = guitools.BetterPushButton('Send')
 
+        self.lastSentCommand = QtWidgets.QLabel('Last: 00')
+
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
         self.grid.addWidget(self.homeButton, 0, 0)
-        self.grid.addWidget(self.setPosLabel, 0, 1)
-        self.grid.addWidget(self.setPosEdit, 0, 2)
-        self.grid.addWidget(self.setPosButton, 0, 3)
+        self.grid.addWidget(self.pos1button, 0, 1)
+        self.grid.addWidget(self.pos2button, 0, 2)
+        self.grid.addWidget(self.pos3button, 0, 3)
+        self.grid.addWidget(self.pos4button, 0, 4)
         
         line = QtWidgets.QFrame()
         line.setFrameShape(QtWidgets.QFrame.HLine)
         line.setFrameShadow(QtWidgets.QFrame.Sunken)
-        self.grid.addWidget(line, 1, 0, 1, 4)
+        self.grid.addWidget(line, 1, 0, 1, 5)
 
         # add table for the channel selection
         self.tableWidget = QtWidgets.QTableWidget()
@@ -43,16 +51,22 @@ class ArduinoWidget(Widget):
         self.tableWidget.setHorizontalHeaderLabels(['Channel', 'Filter', 'Laser'])
         self.tableWidget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
 
-        self.grid.addWidget(self.tableWidget, 2, 0, 3, 3)
-        self.filterOptions = ["Filter 1", "Filter 2", "Filter 3"]
-        self.laserOptions = ["2", "8"]                             #TODO this should be the lasers: 488 - ttl line 8, 594 - ttl line 2
-        self.grid.addWidget(self.addRowButton, 2, 3)
-        self.grid.addWidget(self.removeRowButton, 3, 3)
-        self.grid.addWidget(self.sendToArduino, 4, 3)
+        self.grid.addWidget(self.tableWidget, 2, 0, 4, 4)
+        self.filterOptions = ["Filter 1", "Filter 2", "Filter 3", "Filter 4"]
+        self.laserOptions = ["0"]                            
+        self.grid.addWidget(self.addRowButton, 2, 4)
+        self.grid.addWidget(self.removeRowButton, 3, 4)
+        self.grid.addWidget(self.sendToArduino, 4, 4)
+
+        self.grid.addWidget(self.lastSentCommand, 5, 4)
 
         # connect the buttons
         self.homeButton.clicked.connect(self.sigHomeClicked)
-        self.setPosButton.clicked.connect(self.sigSetPosClicked)
+        self.pos1button.clicked.connect(self.sigSetPos1Clicked)
+        self.pos2button.clicked.connect(self.sigSetPos2Clicked)
+        self.pos3button.clicked.connect(self.sigSetPos3Clicked)
+        self.pos4button.clicked.connect(self.sigSetPos4Clicked)
+
         self.addRowButton.clicked.connect(self.sigAddRowClicked)
         self.removeRowButton.clicked.connect(self.sigRemoveRowClicked)
         self.sendToArduino.clicked.connect(self.sigSendToArduinoClicked)
@@ -94,8 +108,16 @@ class ArduinoWidget(Widget):
     def getPos(self):
         return int(self.setPosEdit.text())
     
+    def updateLastCommand(self, command):
+        self.lastSentCommand.setText(f'Last: {command}')
+    
+    def updateLaserOptions(self, options):
+        self.laserOptions = options
+
+    def updateEmissionFilterOptions(self, options):
+        self.filterOptions = [f'{i} - {options[i]}' for i in options]
 '''
-{
+{   
   "detectors": {
     "thorlabscam": {
       "analogChannel": null,

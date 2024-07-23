@@ -2,7 +2,6 @@ from imswitch.imcommon.model import initLogger
 from thorlabs_apt_device.devices.kdc101 import KDC101
 from .PositionerManager import PositionerManager
 import time
-
 """
 Encoder steps per degree found here:
 https://www.thorlabs.com/Software/Motion%20Control/APT_Communications_Protocol.pdf
@@ -13,13 +12,6 @@ EncCnt Encoder count -> 1 unit is 1 mm /34554.96 = 28.93940552 nm
 In 1 mm there are 34554.96 encoder counts/device units
 
 """
-
-#class tempInfo:
-#    def __init__(self):
-#        self.managerProperties = {'port': 'COM15', 'posConvFac': 1919.6418578623391, 'velConvFac': 42941.66, "accConvFac": 14.66}
-
-#TODO
-#class KDC101_Trigger(KDC101):          
 
 class KDC101positionerManager(PositionerManager):
 
@@ -112,7 +104,7 @@ class KDC101positionerManager(PositionerManager):
 
     # difference between move_jog and move_relative?
 
-    def move(self, dist_um, axis):
+    def move(self,axis, dist_um):
         """ Moves the positioner by the specified distance and returns the new
         position. Derived classes will update the position field manually. If
         the positioner controls multiple axes, the axis must be specified.
@@ -128,7 +120,7 @@ class KDC101positionerManager(PositionerManager):
             self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {end_position}')
         self.__logger.debug(f'KDC101 relative movement finished')
 
-    def setPosition(self, dist_um: float, axis: str):
+    def setPosition(self, axis, dist_um: float):
         """ Adjusts the positioner to the specified position and returns the
         new position. Derived classes will update the position field manually.
         If the positioner controls multiple axes, the axis must be specified.
@@ -143,7 +135,7 @@ class KDC101positionerManager(PositionerManager):
             self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {move_units}')
         self.__logger.debug(f'KDC101 absolute movement finished')
     
-    def moveAbsolute(self, dist_um, axis):
+    def moveAbsolute(self, axis, dist_um):
         move_units = self._mm_to_units(dist_um * 0.001)             # converting to mm
         self.__logger.debug(f'Moving KDC101 absolute {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_absolute(move_units)
@@ -166,7 +158,6 @@ class KDC101positionerManager(PositionerManager):
     def finalize(self):
         self.kdcstage.close()
 
-    
     # triggering related functions
     def get_triggerIOconfig(self):
         return self.kdcstage.trigger_params()
@@ -188,51 +179,4 @@ class KDC101positionerManager(PositionerManager):
         self.kdcstage.set_moverelparams(relative_distance=units)
 
         
-    
-    #def speed(self, axis):
-    #    '''
-    #    Get the velocity/speed of the stage
-    #    '''
-    #    return self._unitspers_to_mmpers(self.kdcstage.velparams['max_velocity'])
-    
-    #TODO change the acceleration as well
 
-
-    
-
-'''
-"positioners": {
-    "sample_stage": {
-        "managerName": "KDC101positionerManager",
-        "managerProperties": {
-            "port": "COM14",
-            "units": "mm",
-            "posConvFac": 34554.96,
-            "velConvFac": 772981.3692,
-            "accConvFac": 263.8443072
-        },
-        "axes": [
-          "X"
-      ],
-      "isPositiveDirection": true,
-      "forPositioning": true,
-      "forScanning": true
-    },
-    "camera_stage": {
-        "managerName": "KDC101positionerManager",
-        "managerProperties": {
-            "port": "COM15",
-            "units": "mm",
-            "posConvFac": 34554.96,
-            "velConvFac": 772981.3692,
-            "accConvFac": 263.8443072
-        },
-        "axes": [
-          "Y"
-      ],
-      "isPositiveDirection": true,
-      "forPositioning": true,
-      "forScanning": true
-    }
-  },
-'''

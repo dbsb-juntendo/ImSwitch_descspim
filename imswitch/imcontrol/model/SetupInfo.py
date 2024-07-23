@@ -105,7 +105,9 @@ class ArduinoInfo:
     port: str
     """ Port number of the Arduino. (COM3)"""
     baudrate: int
-    """ Baudrate of the Arduino. (9600)"""
+    """ Baudrate of the Arduino. (9600)"""    
+    emissionFilters: Dict[str, Any]
+    """ Properties. """
 
 @dataclass(frozen=True)
 class SLMInfo:

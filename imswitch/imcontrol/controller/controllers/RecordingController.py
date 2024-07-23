@@ -151,6 +151,12 @@ class RecordingController(ImConWidgetController):
             time.sleep(0.01)
             self.savename = os.path.join(folder, self.getFileName()) + '_rec'
 
+            try:
+                self.__logger.debug(f'Starting recording with arduino')
+                self._master.arduinoManager.startScan()
+            except AttributeError:
+                self.__logger.error(f'Arduino not connected.')
+                
             if self.recMode == RecMode.ScanOnce:
                 self._commChannel.sigScanStarting.emit()  # To get correct values from sharedAttrs
 

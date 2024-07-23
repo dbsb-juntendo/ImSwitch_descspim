@@ -23,17 +23,14 @@ def configure_path():
 
 configure_path()
 
-from thorlabs_tsi_sdk.tl_camera import TLCameraSDK, OPERATION_MODE
+from thorlabs_tsi_sdk.tl_camera import TLCameraSDK, OPERATION_MODE, TRIGGER_POLARITY
 from thorlabs_tsi_sdk.tl_mono_to_color_processor import MonoToColorProcessorSDK
 from thorlabs_tsi_sdk.tl_camera_enums import SENSOR_TYPE
 
-TAG_BITDEPTH = 32768
-TAG_EXPOSURE = 32769
-
 
 class CameraThorCamSci:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1, 
-                 operation_mode=0, trigger_polarity=0):
+    def __init__(self,cameraNo=None, exposure_time = 10000, frame_rate=-1, binning=1, 
+                 operation_mode=0, trigger_polarity=TRIGGER_POLARITY.ACTIVE_HIGH):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
         print('interface is called')
@@ -46,9 +43,7 @@ class CameraThorCamSci:
         self.is_streaming = False
 
         # camera parameters
-        self.blacklevel = blacklevel
         self.exposure_time = exposure_time
-        self.gain = gain
         self.preview_width = 600
         self.preview_height = 600
         self.frame_rate = frame_rate 
@@ -116,25 +111,7 @@ class CameraThorCamSci:
         cameras = self.sdk.discover_available_cameras()
         self.camera = self.sdk.open_camera(cameras[cameraNo-1])
 
-        self.camera.image_poll_timeout_ms = 2000  # 2 second timeout
-
-        # save these values to place in our custom TIFF tags later
-        bit_depth = self.camera.bit_depth
-        exposure = self.camera.exposure_time_us
-
-        # initialize a mono to color processor if this is a color self.camera
-        is_color_camera = (self.camera.camera_sensor_type == SENSOR_TYPE.BAYER)
-        mono_to_color_sdk = None
-        mono_to_color_processor = None
-        if is_color_camera:
-            mono_to_color_sdk = MonoToColorProcessorSDK()
-            mono_to_color_processor = mono_to_color_sdk.create_mono_to_color_processor(
-                self.camera.self.camera_sensor_type,
-                self.camera.color_filter_array_phase,
-                self.camera.get_color_correction_matrix(),
-                self.camera.get_default_white_balance_matrix(),
-                self.camera.bit_depth
-            )
+        self.camera.image_poll_timeout_ms = 10000 # 10 second timeout
 
         # get framesize 
         self.SensorHeight = self.camera.sensor_height_pixels
@@ -143,16 +120,11 @@ class CameraThorCamSci:
         # set exposure
         self.camera.exposure_time_us=int(self.exposure_time*1000)
 
-        # set gain
-        self.camera.gain=int(self.gain)
-        
-        # set blacklevel
-        self.camera.blacklevel=int(self.blacklevel)
-
         # set triggering parameters
         self.camera.operation_mode = self.operation_mode
         self.camera.trigger_polarity = self.trigger_polarity
-        
+        # set polling timeout when camera is waiting for hardware trigger
+        self.camera.image_poll_timeout_ms = 10000
         # maybe this is not needed here
         if int(self.operation_mode) == 0:            # software triggered
             self.camera.frames_per_trigger_zero_for_unlimited = 0
@@ -160,37 +132,68 @@ class CameraThorCamSci:
             self.camera.frames_per_trigger_zero_for_unlimited = 1
         elif int(self.operation_mode) == 2:          # bulb
             self.camera.frames_per_trigger_zero_for_unlimited = 1
-        #self.camera.arm(2)
-        #print('camera is armed')
-        # start frame grabber thread
-        #self.frameGrabberThread = threading.Thread(target=self.frameGrabber, daemon=True)
-        #self.frameGrabberThread.start()
         
-    def start_live(self):
-        self.__logger.debug("Starting Live Thorcam")  
+    def start_record(self):
+        self.__logger.debug("Starting Recording Thorcam") 
+        print(self.is_streaming) 
         if not self.is_streaming:
+            self.is_streaming = True
+            if self.camera.operation_mode == OPERATION_MODE.SOFTWARE_TRIGGERED:
+                print('issuing software trigger')
+                self.camera.arm(2)
+                self.camera.issue_software_trigger()
+            else:
+                self.camera.arm(2)
+
+    
+    def start_live(self):
+        self.__logger.debug("Starting Live Thorcam") 
+        print(self.is_streaming) 
+        if not self.is_streaming:
+            self.is_streaming = True
             self.camera.arm(2)
-            print('camera is armed is doing live')
-            
             if self.camera.operation_mode == OPERATION_MODE.SOFTWARE_TRIGGERED:
                 print('issuing software trigger')
                 self.camera.issue_software_trigger()
-            # start data acquisition
+
             self.frameGrabberThread = threading.Thread(target=self.frameGrabber, daemon=True)
             self.frameGrabberThread.start()
+    
 
+    '''
+    def start_recording(self):
+        self.__logger.debug("Starting Recording Thorcam")
+        if not self.is_streaming:
+            self.camera.arm(2)
+            if self.camera.operation_mode == OPERATION_MODE.SOFTWARE_TRIGGERED:
+                print('issuing software trigger')
+                self.camera.issue_software_trigger()
+
+            # testing
+            import tifffile
+            self.camera.trigger_polarity = TRIGGER_POLARITY.ACTIVE_HIGH
+            self.camera.image_poll_timeout_ms = 10000
+            self.camera.operation_mode = OPERATION_MODE.HARDWARE_TRIGGERED
+            self.camera.frames_per_trigger_zero_for_unlimited = 1
+            for i in range(10):
+                frame = self.camera.get_pending_frame_or_null()
+                if frame is not None:
+                    image_buffer_copy = np.copy(frame.image_buffer)
+                    tifffile.imwrite('C:/Users/alm/Data/240520/thorlabs_cam_sdk/' + 'frame_' + str(frame.frame_count) + '.tif', image_buffer_copy)
+            # testing end
+    '''
     def stop_live(self):
         self.__logger.debug("Stopping Live Thorcam")  
         if self.is_streaming:
             # start data acquisition
             self.is_streaming = False
-            self.frameGrabberThread.join()
+            #self.frameGrabberThread.join()
 
     def suspend_live(self):
         self.__logger.debug("Suspending Live Thorcam")  
         if self.is_streaming:
             self.is_streaming = False
-            self.frameGrabberThread.join()
+            #self.frameGrabberThread.join()
             self.camera.disarm()
             print('camera is disarmed')
 
@@ -208,16 +211,9 @@ class CameraThorCamSci:
         self.camera.exposure_time_us=int(exposure_time*1000)
         print('exposure time is set to', exposure_time)
 
-    def set_gain(self,gain):
-        self.gain = gain
-        self.camera.gain = gain
-
     def set_frame_rate(self, frame_rate):
         pass
-        
-    def set_blacklevel(self,blacklevel):
-        self.blacklevel = blacklevel
-        self.camera.black_level=blacklevel
+    
         
     def set_pixel_format(self,format):
         pass
@@ -238,7 +234,7 @@ class CameraThorCamSci:
     def flushBuffer(self):
         self.frameid_buffer.clear()
         self.frame_buffer.clear()
-        
+    
     def getLastChunk(self):
         chunk = np.array(self.frame_buffer)
         frameids = np.array(self.frameid_buffer)
@@ -246,6 +242,12 @@ class CameraThorCamSci:
         #self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
         return chunk
     
+    def getLastImage(self):
+        frame = self.camera.get_pending_frame_or_null()
+        if frame is not None:
+            image = np.copy(frame.image_buffer)
+            return image
+
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
         pass
 
@@ -273,15 +275,11 @@ class CameraThorCamSci:
             print('Disarming camera to change Trigger polarity to ', str(int(trigger_polarity)))
             self.camera.disarm()
             self.camera.trigger_polarity = trigger_polarity
-
+    
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
-        if property_name == "gain":
-            self.set_gain(int(property_value))
-        elif property_name == "exposure":
+        if property_name == "exposure":
             self.set_exposure_time(int(property_value))
-        elif property_name == "blacklevel":
-            self.set_blacklevel(int(property_value))
         elif property_name == "roi_size":
             self.roi_size = property_value
         elif property_name == "frame_rate":
@@ -301,12 +299,8 @@ class CameraThorCamSci:
 
     def getPropertyValue(self, property_name):
         # Check if the property exists.
-        if property_name == "gain":
-            property_value = self.camera.Gain.get()
-        elif property_name == "exposure":
-            property_value = self.camera.ExposureTime.get()
-        elif property_name == "blacklevel":
-            property_value = self.camera.BlackLevel.get()            
+        if property_name == "exposure":
+            property_value = self.camera.ExposureTime.get()       
         elif property_name == "image_width":
             property_value = self.camera.Width.get()//self.binning         
         elif property_name == "image_height":

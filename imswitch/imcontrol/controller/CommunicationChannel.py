@@ -100,6 +100,9 @@ class CommunicationChannel(SignalInterface):
     sigUpdateStagePosition = Signal(str, str)   # (stageName, axisName)
     sigUpdateRelDistance = Signal(str, str, float)   # (stageName, axisName, relDistance)
 
+    # update stages signal
+    sigUpdateStages = Signal(str, str)
+
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)

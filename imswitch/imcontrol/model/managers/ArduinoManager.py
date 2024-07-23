@@ -1,6 +1,7 @@
 from imswitch.imcommon.model import initLogger
 from abc import ABC
 import serial
+import time
 
 class ArduinoManager(ABC):
     def __init__(self, ArduinoInfo, *args, **kwargs):
@@ -11,34 +12,33 @@ class ArduinoManager(ABC):
         self.__ArduinoInfo = ArduinoInfo
         self.__port = self.__ArduinoInfo.port
         self.__baudrate = self.__ArduinoInfo.baudrate
+        #TODO
+        self.__emissionFilters = self.__ArduinoInfo.emissionFilters
+        
         # initialise
         try:
             self.arduino = serial.Serial(self.__port, self.__baudrate)
             self.__logger.debug(f'Initialized Arduino.')
+            time.sleep(2)
 
         except:
             self.__logger.error(f'Failed to initialize Arduino on port {self.__port}.')
 
     def home(self):
         self.__logger.debug(f'Homing ELL9.')
-        self.arduino.write(b'0\n')
+        self.arduino.write(b'0')
 
     def moveToPos(self, pos:int):
         self.__logger.debug(f'Moving ELL9 to Position {pos}.')
-        self.arduino.write(f'{pos}\n'.encode())
+        self.arduino.write(f'{pos}'.encode('utf-8'))
 
     def sendToArd(self, tableData):
         self.__logger.debug(f'Sending data to Arduino.')
-        toSend = ''
-        for row in tableData:
-            filter = row[1][-1]
-            laser = row[2][-1]
-            toSend += f'{filter}{laser}\n'
-        self.arduino.write(toSend.encode())
+        self.arduino.write(tableData.encode('utf-8'))
 
     def startScan(self):
         self.__logger.debug(f'Starting scan.')
-        self.arduino.write(b's\n')
+        self.arduino.write(f'begin'.encode('utf-8'))
 
 '''
 import serial

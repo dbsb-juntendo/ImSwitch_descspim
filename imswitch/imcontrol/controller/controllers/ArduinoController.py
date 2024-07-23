@@ -6,13 +6,24 @@ class ArduinoController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.laserTTLs = [(lManager.wavelength, lManager._ttlLine.split('TTL')[-1]) for lName, lManager in self._master.lasersManager]
+        print(dir(self._master.arduinoManager))
+        self.emissionFilters = self._master.arduinoManager._ArduinoManager__emissionFilters
+        
         # connect the buttons
         self._widget.sigHomeClicked.connect(self.home)
-        self._widget.sigSetPosClicked.connect(self.moveToPos)
+        self._widget.sigSetPos1Clicked.connect(self.moveToPos1)
+        self._widget.sigSetPos2Clicked.connect(self.moveToPos2)
+        self._widget.sigSetPos3Clicked.connect(self.moveToPos3)
+        self._widget.sigSetPos4Clicked.connect(self.moveToPos4)
+
         self._widget.sigAddRowClicked.connect(self.addRow)
         self._widget.sigRemoveRowClicked.connect(self.removeRow)
         self._widget.sigSendToArduinoClicked.connect(self.sendTableDataToArduino)
 
+        # update laser ttls
+        self._widget.updateLaserOptions([f'{l[0]} - TTL {l[1]}' for l in self.laserTTLs])
+        self._widget.updateEmissionFilterOptions(self.emissionFilters)
     def home(self):
         self._master.arduinoManager.home()
     
@@ -23,6 +34,21 @@ class ArduinoController(ImConWidgetController):
         else:
             self._master.arduinoManager.moveToPos(new_pos)
     
+    def updateLastCommand(self, command):
+        self._widget.updateLastCommand(command)
+
+    def moveToPos1(self):
+        self.moveToPos(1)
+    
+    def moveToPos2(self):
+        self.moveToPos(2)
+    
+    def moveToPos3(self):
+        self.moveToPos(3)
+    
+    def moveToPos4(self):
+        self.moveToPos(4)
+
     def addRow(self):
         self._widget.addTableRow()
     
@@ -41,10 +67,16 @@ class ArduinoController(ImConWidgetController):
 
             if channel_item is not None and filter_combo is not None and laser_combo is not None:
                 channel = channel_item.text()
-                filter_selected = filter_combo.currentText()
-                laser_selected = laser_combo.currentText()
+                filter_selected = filter_combo.currentText()[0]
+                print(filter_selected)
+                laser_selected = laser_combo.currentText().split()[-1]
                 table_data.append((channel, filter_selected, laser_selected))
 
-
-        self._logger.debug(f'Table data: {table_data}')
-        self._master.arduinoManager.sendToArd(table_data)
+        toSend = ''
+        for row in table_data:
+            filter = row[1][-1]
+            laser = row[2][-1]
+            toSend += f'{filter}{laser}'
+        self._logger.debug(f'Table data: {toSend}')
+        self._master.arduinoManager.sendToArd(toSend)
+        self.updateLastCommand(toSend)

@@ -17,7 +17,8 @@ class PyCobolt0601DPLLaserManager(LaserManager):
     def __init__(self, laserInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
-        self._port = laserInfo.managerProperties['digitalPorts'][0]
+        self._port = laserInfo.managerProperties['port']
+        self._ttlLine = laserInfo.managerProperties['digitalLine']
         self.__logger.debug(f'Initializing Cobolt0601-DPL laser (name: {name}) on port {self._port}')
 
         try:    
@@ -51,7 +52,7 @@ class PyCobolt0601DPLLaserManager(LaserManager):
             self._laser.digital_modulation(0)   # but make sure to have digital modulation off
             
     def setValue(self, power):
-        power = int(power)
+        power = int(power)*1000
         self._laser.set_power(power)
         self.__logger.debug(f'Set power to: {power}')
 
@@ -76,9 +77,13 @@ class PyCobolt0601DPLLaserManager(LaserManager):
 
     
     def setModulationPower(self, power):
-        power = int(power)
-        self._laser.set_power(power)     # need to check this
-        self.__logger.debug(f'Set modulation power to: {power}')
+        #TODO contact cobolt, as set_modulation_power() function is not implemented for DPL lasers
+        # need to use set_modulation_current_high() and set_modulation_current_low() functions
+        # y = 9.3916x + 1219.3
+        mA = (9.3916*power) + 1219.3
+        self._laser.set_modulation_current_high(mA+(mA*0.05)) # 5% higher than the desired value
+        self._laser.set_modulation_current_low(mA-(mA*0.05))
+        self.__logger.debug(f'Desired power: {power}, set modulation current to: {mA} +/- 5%')
 
     def getAllDeviceNames(self):                    # wonder where thats needed
         self.__logger.debug(f'Available devices: {list_lasers()}')

@@ -10,9 +10,24 @@ Create a conda environment with python=3.10 and install imswitch with ``pip inst
 
 ## Documentation
 
-Further documentation is available at [imswitch.readthedocs.io](https://imswitch.readthedocs.io).
+Further documentation is available at [imswitch.readthedocs.io](https://imswitch.readthedocs.io). This repository is still very much under development!
 
-## Testing
+## Notes
 
-ImSwitch has automated testing through GitHub Actions, including UI and unit tests. It is also possible to manually inspect and test the software without any device since it contains mockers that are automatically initialized if the instrumentation specified in the config file is not detected.
+- When using a cobolt DPL laser, the power in mW is converted to mA and sent to the laser, as the set_modulation_power() function is not implemented
+- The ttl pins that lead to the lasers should be single digit
 
+## TODO
+
+### important
+
+- jog mode for the stage, easier to find the sample (two buttons each direction per stage for two different speeds)
+- window is frozen while recording, do threading
+
+### less important
+
+- 2024-07-23 12:22:32 WARNING [ThorCamSciManager -> thorlabscam] Property gain does not exist, 2024-07-23 12:22:32 WARNING [ThorCamSciManager -> thorlabscam] Property blacklevel does not exist, remove blacklevel and gain from camera features
+- psf widget
+- line widget similar to fiji
+- update stages after recording finished
+- change window layout for when using a potrait style screen

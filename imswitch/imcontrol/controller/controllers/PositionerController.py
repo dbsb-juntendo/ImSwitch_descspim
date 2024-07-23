@@ -4,6 +4,34 @@ from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 import time
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PyQt5.QtCore import pyqtSlot
+
+from PyQt5.QtCore import QObject, pyqtSignal
+
+class Worker(QObject):
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+
+    def __init__(self, positionerManager, operation, axis, dist=None):
+        super().__init__()
+        self.positionerManager = positionerManager
+        self.operation = operation
+        self.axis = axis
+        self.dist = dist
+
+    def run(self):
+        try:
+            if self.operation == 'move':
+                self.positionerManager.move(self.axis, self.dist)
+            elif self.operation == 'moveAbsolute':
+                self.positionerManager.moveAbsolute(self.axis, self.dist)
+            elif self.operation == 'setPosition':
+                self.positionerManager.setPosition(self.axis, self.dist)
+            self.finished.emit()
+        except Exception as e:
+            self.error.emit(str(e))
+
 
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
@@ -12,7 +40,9 @@ class PositionerController(ImConWidgetController):
         super().__init__(*args, **kwargs)
 
         self.settingAttr = False
-
+        self.thread = None
+        self.worker = None
+        
         self.__logger = initLogger(self, tryInheritParent=True)
 
         # Set up positioners
@@ -50,10 +80,39 @@ class PositionerController(ImConWidgetController):
 
     def getSpeed(self):
         return self._master.positionersManager.execOnAll(lambda p: p.speed)
+    
+    # modified __________________________
+    def move(self, positionerName, axis, dist):
+        self._runInThread('move', positionerName, axis, dist)
 
+    def moveAbsolute(self, positionerName, axis):
+        dist = self._widget.getAbsPosition(positionerName, axis)
+        self._runInThread('moveAbsolute', positionerName, axis, dist)
+
+    def setPos(self, positionerName, axis, position):
+        self._runInThread('setPosition', positionerName, axis, position)
+
+    def _runInThread(self, operation, positionerName, axis, dist):
+        positionerManager = self._master.positionersManager[positionerName]
+        self.thread = QThread()
+        self.worker = Worker(positionerManager, operation, axis, dist)
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.error.connect(self._handleWorkerError)
+        self.worker.finished.connect(lambda: self.updatePosition(positionerName, axis))
+        self.thread.start()
+
+    def _handleWorkerError(self, errorMsg):
+        self.__logger.error(f"Worker error: {errorMsg}")
+
+    # modified end ______________________
+
+    '''
     def move(self, positionerName, axis, dist):
         """ Moves positioner by dist micrometers in the specified axis. RELATIVE MOVEMENT."""
-        initial_position = round(self._master.positionersManager[positionerName].getPosition(axis))
         self._master.positionersManager[positionerName].move(dist, axis)
         self.updatePosition(positionerName, axis)
     
@@ -67,6 +126,7 @@ class PositionerController(ImConWidgetController):
         """ Moves the positioner to the specified position in the specified axis. """
         self._master.positionersManager[positionerName].setPosition(position, axis)
         self.updatePosition(positionerName, axis)
+    '''
 
     def stepUp(self, positionerName, axis):
         self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis))
