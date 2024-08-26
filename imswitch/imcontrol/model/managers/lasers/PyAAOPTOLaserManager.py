@@ -1,15 +1,16 @@
 from imswitch.imcommon.model import initLogger, pythontools
-from pycobolt import Cobolt06DPL
-from pycobolt import list_lasers
+from aaopto_aotf.aotf import MPDS
+from aaopto_aotf.device_codes import BlankingMode, VoltageRange, InputMode
 from .LaserManager import LaserManager
 import importlib
 
-class PyCobolt0601DPLLaserManager(LaserManager):
-    """ LaserManager for Cobolt 06-01 lasers. Uses digital modulation mode when
-    scanning. Does currently not support DPL type lasers.
+class PyAAOPTOLaserManager(LaserManager):
+    """ LaserManager for channel of AAoptoelectronics AOTF. Uses digital modulation mode when
+    scanning. 
 
     Manager properties:
 
+    
     - ``digitalPorts`` -- a string array containing the COM ports to connect
       to, e.g. ``["COM4"]``
     """
@@ -17,50 +18,46 @@ class PyCobolt0601DPLLaserManager(LaserManager):
     def __init__(self, laserInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
+        #TODO for now only one channel can be implemented
+        #TODO implement multiple channels while using the same port for all of them
         self._port = laserInfo.managerProperties['port']
         self._ttlLine = laserInfo.managerProperties['digitalLine']
-        self.__logger.debug(f'Initializing Cobolt0601-DPL laser (name: {name}) on port {self._port}')
+        self._channel = laserInfo.managerProperties['channel']
+        self._frequency = laserInfo.managerProperties['frequency']
+        self._valueUnits='dBm'
+        self.__logger.debug(f'Initializing AOTF channel (name: {name}) on port {self._port}')
 
         try:    
-            self._laser = Cobolt06DPL(self._port)
+            self._aotf = MPDS(self._port)
             self._digitalMod = False
 
             # start up by turning on modulation power -> laser is off
-            self._laser.set_power(5)
-            self._laser.modulation_mode()
-            # check mode of laser
-            mode = self._laser.get_mode()
-            self.__logger.debug(f'Laser mode is: {mode}, might have to turn the key.')
-            super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0, isModulated=True)
+            self._aotf.set_blanking_mode(BlankingMode.INTERNAL)
+            self._aotf.set_external_input_voltage_range(VoltageRange.ZERO_TO_FIVE_VOLTS)
+            self._aotf.set_channel_input_mode(self._channel, InputMode.INTERNAL)
+            self._aotf.set_frequency(self._channel, self._frequency)
+
+            super().__init__(laserInfo, name, isBinary=False, valueUnits='dBm', valueDecimals=0, isModulated=True)
         
         #TODO mocker does not work
         except Exception as e:
-            self.__logger.error(f'Failed to initialize Cobolt0601-DPL laser (name: {name}) on port {self._port}, loading mocker.')
-            package = importlib.import_module(
-                pythontools.joinModulePath('imswitch.imcontrol.model.lantzdrivers_mock.', 'cobolt0601')
-                )
-            driver = getattr(package, 'Cobolt0601_f2')
-            laser = driver(self._port)
-            laser.initialize()
+            self.__logger.error(f'Failed to initialize Cobolt0601-DPL laser (name: {name}) on port {self._port},.')
 
     def setEnabled(self, enabled):      # toggle laser on or off
         if enabled:                             # laser is toggled on 
-            self._laser.digital_modulation(0)   # turn off dig. modulation
-            self._laser.constant_power()    # set laser to constant power mode
+            self._aotf.set_channel_input_mode(self._channel, InputMode.INTERNAL) 
+            self._aotf.enable_channel(self._channel)   # turn off dig. modulation
         else:                                   # If laser should be disabled, turn off by setting scanmode to active -> modulation mode
-            self._laser.modulation_mode()   # switch to modulation mode
-            self._laser.digital_modulation(0)   # but make sure to have digital modulation off
+            self._aotf.disable_channel(self._channel)
             
-    def setValue(self, power):
-        power = int(power)*1000
-        self._laser.set_power(power)
-        self.__logger.debug(f'Set power to: {power}')
+    def setValue(self, power):      # power in dBm
+        self._aotf.set_power_dbm(self._channel, power)
+        self.__logger.debug(f'Set power to: {power} dBm')
 
     def setScanModeActive(self, active):            
-
         if active == False:                      # turn off everything
-            self._laser.digital_modulation(0)    # turn off dig. modulation
-            self._laser.modulation_mode(0)
+            self._aotf.set_channel_input_mode(self._channel, InputMode.INTERNAL)
+            self._aotf.disable_channel(self._channel)    # turn off dig. modulation
         else:
         #TODO
         # this is needed when imswitch is handling the scan
@@ -70,24 +67,19 @@ class PyCobolt0601DPLLaserManager(LaserManager):
 
     def setModulationEnabled(self, enabled):
         if enabled:
-            self._laser.modulation_mode()
-            self._laser.digital_modulation(1)
+            self._aotf.disable_channel(self._channel)
+            self._aotf.set_channel_input_mode(self._channel, InputMode.EXTERNAL)
         else:
-            self._laser.digital_modulation(0)
+            self._aotf.disable_channel(self._channel)
+            self._aotf.set_channel_input_mode(self._channel, InputMode.INTERNAL)
 
     
     def setModulationPower(self, power):
         #TODO contact cobolt, as set_modulation_power() function is not implemented for DPL lasers
         # need to use set_modulation_current_high() and set_modulation_current_low() functions
         # y = 9.3916x + 1219.3
-        mA = (9.3916*power) + 1219.3
-        self._laser.set_modulation_current_high(mA+(mA*0.05)) # 5% higher than the desired value
-        self._laser.set_modulation_current_low(0)
-        self.__logger.debug(f'Desired power: {power}, set modulation current to: {mA} +/- 5%')
-
-    def getAllDeviceNames(self):                    # wonder where thats needed
-        self.__logger.debug(f'Available devices: {list_lasers()}')
-        return list_lasers()
+        self.__logger.debug(f'Set modulation power to: {power} dBm')
+        self.setValue(power)
                             
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

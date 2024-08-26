@@ -11,7 +11,8 @@ class PositionerWidget(Widget):
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepAbsoluteClicked = QtCore.Signal(str, str)  # (positionerName, axis) for absolute movement
     #sigsetSpeedClicked = QtCore.Signal()  # (speed)
-    
+    sigHomeClicked = QtCore.Signal(str, str)  # (positionerName)
+
     #sigsetIOparams1Clicked = QtCore.Signal(str, str)  # (io_params)
     sigsetRelDistanceClicked = QtCore.Signal(str, str)  # (rel_distance)
     sigSetIOparamsClicked = QtCore.Signal(str, str)  # (io_params)
@@ -37,6 +38,7 @@ class PositionerWidget(Widget):
             self.pars['DownButton' + parNameSuffix] = guitools.BetterPushButton('-')
             self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('5')
             self.pars['StepUnit' + parNameSuffix] = QtWidgets.QLabel(' µm')
+            self.pars['HomeButton' + parNameSuffix] = guitools.BetterPushButton('Home')
 
             # add absolute movement
             self.pars['AbsolutePosEdit' + parNameSuffix] = QtWidgets.QLineEdit('0')             
@@ -54,6 +56,7 @@ class PositionerWidget(Widget):
             #self.pars['rel_distance2' + parNameSuffix] = QtWidgets.QLineEdit('0')
             #self.pars['rel_distance2_unit' + parNameSuffix] = QtWidgets.QLabel(' µm')
 
+            # row 1
             self.grid.addWidget(self.pars['Label' + parNameSuffix], 3*self.numPositioners, 0)
             self.grid.addWidget(self.pars['Position' + parNameSuffix], 3*self.numPositioners, 1)
             self.grid.addWidget(self.pars['UpButton' + parNameSuffix], 3*self.numPositioners, 2)
@@ -61,23 +64,24 @@ class PositionerWidget(Widget):
             self.grid.addWidget(QtWidgets.QLabel('Step'), 3*self.numPositioners, 4)
             self.grid.addWidget(self.pars['StepEdit' + parNameSuffix], 3*self.numPositioners, 5)
             self.grid.addWidget(self.pars['StepUnit' + parNameSuffix], 3*self.numPositioners, 6)
-
-            # Create a new row for absolute movement
+            self.grid.addWidget(self.pars['HomeButton' + parNameSuffix], 3*self.numPositioners, 7)
+            # row 2
             self.grid.addWidget(QtWidgets.QLabel('Abs: '), 3*self.numPositioners+1, 0)
             self.grid.addWidget(self.pars['AbsolutePosEdit' + parNameSuffix], 3*self.numPositioners+1, 1)
             self.grid.addWidget(self.pars['AbsolutePosButton' + parNameSuffix], 3*self.numPositioners+1, 2)
 
-            # add triggering stuff
+            # row 3
             self.grid.addWidget(QtWidgets.QLabel('IO1_mode: '), 3*self.numPositioners+2, 0)
             self.grid.addWidget(self.pars['trig1_mode' + parNameSuffix], 3*self.numPositioners+2, 1)
             #self.grid.addWidget(self.pars['set_trig1_mode' + parNameSuffix], 2*self.numPositioners+2, 2)
-            self.grid.addWidget(QtWidgets.QLabel('Relative IO1 move: '), 3*self.numPositioners+2, 2)
+            self.grid.addWidget(QtWidgets.QLabel('Rel IO1 move: '), 3*self.numPositioners+2, 2)
             self.grid.addWidget(self.pars['rel_distance1' + parNameSuffix], 3*self.numPositioners+2, 3)
             self.grid.addWidget(self.pars['rel_distance1_unit' + parNameSuffix], 3*self.numPositioners+2, 4)
             self.grid.addWidget(self.pars['set_rel_distance1' + parNameSuffix], 3*self.numPositioners+2, 5)
             self.grid.addWidget(QtWidgets.QLabel('IO2_mode: '), 3*self.numPositioners+2, 6)
             self.grid.addWidget(self.pars['trig2_mode' + parNameSuffix], 3*self.numPositioners+2, 7)
             self.grid.addWidget(self.pars['set_trig2_mode' + parNameSuffix], 3*self.numPositioners+2, 8)
+
             # Connect signals
             self.pars['UpButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepUpClicked.emit(positionerName, axis)
@@ -85,6 +89,10 @@ class PositionerWidget(Widget):
             self.pars['DownButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepDownClicked.emit(positionerName, axis)
             )
+            self.pars['HomeButton' + parNameSuffix].clicked.connect(
+                lambda *args, axis=axis: self.sigHomeClicked.emit(positionerName, axis)
+            )
+
             # absolute movement button
             self.pars['AbsolutePosButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepAbsoluteClicked.emit(positionerName, axis)

@@ -24,15 +24,16 @@ class ArduinoController(ImConWidgetController):
         # update laser ttls
         self._widget.updateLaserOptions([f'{l[0]} - TTL {l[1]}' for l in self.laserTTLs])
         self._widget.updateEmissionFilterOptions(self.emissionFilters)
+        self._widget.updateSliderLabels(self.emissionFilters)
+        
     def home(self):
         self._master.arduinoManager.home()
     
-    def moveToPos(self):
-        new_pos = self._widget.getPos()
-        if new_pos not in range(1, 5):
+    def moveToPos(self, pos):
+        if pos not in range(1, 5):
             self._logger.error('Invalid position. Must be between 1 and 4.')
         else:
-            self._master.arduinoManager.moveToPos(new_pos)
+            self._master.arduinoManager.moveToPos(pos)
     
     def updateLastCommand(self, command):
         self._widget.updateLastCommand(command)

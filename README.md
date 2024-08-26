@@ -21,11 +21,22 @@ Further documentation is available at [imswitch.readthedocs.io](https://imswitch
 
 ### important
 
+- display max value while live
+- prohibit using the green laser within the first few minutes for warmup (has high power in the beginning  )
+- naoari viewer widget to visualize it better with the three colors for example
+- make metadata file
 - jog mode for the stage, easier to find the sample (two buttons each direction per stage for two different speeds)
 - window is frozen while recording, do threading
+- add pixel size to recorded data -                 tiff.imwrite(path, image,
+                             imagej=True,
+                             resolution=(1/0.345, 1/0.345),
+                             metadata={'unit':'um', 'axes':'YX'})
+- 594 modulation does not work again, there is no power modulation mode from python BUT in the software? email cobolt
+- when stopping live mode turn off all lasers (toggle)
 
 ### less important
 
+- rewrite kdcmanager so that original api file can be used
 - 2024-07-23 12:22:32 WARNING [ThorCamSciManager -> thorlabscam] Property gain does not exist, 2024-07-23 12:22:32 WARNING [ThorCamSciManager -> thorlabscam] Property blacklevel does not exist, remove blacklevel and gain from camera features
 - psf widget
 - line widget similar to fiji

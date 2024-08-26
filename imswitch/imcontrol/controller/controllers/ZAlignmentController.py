@@ -82,9 +82,9 @@ class ZAlignmentController(ImConWidgetController):
 
     def moveSampleCamera(self, pos_c, pos_s):
         sample_stage, camera_stage = self._getStages()
-        self._master.positionersManager[sample_stage[0]].moveAbsolute(float(pos_s.split()[1]), sample_stage[1].axes[0])       # move to pos1 sample
+        self._master.positionersManager[sample_stage[0]].moveAbsolute(sample_stage[1].axes[0], float(pos_s.split()[1]))       # move to pos1 sample
         self._commChannel.sigUpdateStagePosition.emit(sample_stage[0], sample_stage[1].axes[0])    #, new_pos)   # new  
-        self._master.positionersManager[camera_stage[0]].moveAbsolute(float(pos_c.split()[1]), camera_stage[1].axes[0])       # move to pos1 camera                                 
+        self._master.positionersManager[camera_stage[0]].moveAbsolute(camera_stage[1].axes[0], float(pos_c.split()[1]))       # move to pos1 camera                                 
         self._commChannel.sigUpdateStagePosition.emit(camera_stage[0], camera_stage[1].axes[0])    #, new_pos)   # new
 
     def updateStages(self):

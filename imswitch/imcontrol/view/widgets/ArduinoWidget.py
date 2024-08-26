@@ -116,6 +116,13 @@ class ArduinoWidget(Widget):
 
     def updateEmissionFilterOptions(self, options):
         self.filterOptions = [f'{i} - {options[i]}' for i in options]
+
+    def updateSliderLabels(self, options):
+        print(options)
+        self.pos1button = guitools.BetterPushButton(f'1 - {options["1"]}')
+        self.pos2button = guitools.BetterPushButton(f'2 - {options["2"]}')
+        self.pos3button = guitools.BetterPushButton(f'3 - {options["3"]}')
+        self.pos4button = guitools.BetterPushButton(f'4 - {options["4"]}')
 '''
 {   
   "detectors": {

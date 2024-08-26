@@ -24,6 +24,8 @@ class Worker(QObject):
         try:
             if self.operation == 'move':
                 self.positionerManager.move(self.axis, self.dist)
+            elif self.operation == 'home':
+                self.positionerManager.home(self.axis)
             elif self.operation == 'moveAbsolute':
                 self.positionerManager.moveAbsolute(self.axis, self.dist)
             elif self.operation == 'setPosition':
@@ -42,6 +44,7 @@ class PositionerController(ImConWidgetController):
         self.settingAttr = False
         self.thread = None
         self.worker = None
+        self.thread_running = False
         
         self.__logger = initLogger(self, tryInheritParent=True)
 
@@ -64,6 +67,7 @@ class PositionerController(ImConWidgetController):
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
         #self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
+        self._widget.sigHomeClicked.connect(self.home)
         # absolute movement
         self._widget.sigStepAbsoluteClicked.connect(self.moveAbsolute)
         # trigIO params
@@ -71,6 +75,15 @@ class PositionerController(ImConWidgetController):
         self._widget.sigSetIOparamsClicked.connect(self.set_IO_params) # what to do here
         # relative movement setting io channel 1
         self._widget.sigsetRelDistanceClicked.connect(self.set_relative_distance)
+
+        # update initial positions
+        for pName, pManager in self._master.positionersManager:
+            print(dir(pManager))
+            for axis in pManager.axes:  
+                print(axis)  
+                initialPos = pManager._initialPosition
+                self._widget.updatePosition(pName, axis, initialPos)
+                    
 
     def closeEvent(self):                               
         self.__logger.debug('Closing PositionerController, but not doing anything.')
@@ -81,7 +94,9 @@ class PositionerController(ImConWidgetController):
     def getSpeed(self):
         return self._master.positionersManager.execOnAll(lambda p: p.speed)
     
-    # modified __________________________
+    def home(self, positionerName, axis):
+        self._runInThread('home', positionerName, axis, None)
+
     def move(self, positionerName, axis, dist):
         self._runInThread('move', positionerName, axis, dist)
 
@@ -93,40 +108,30 @@ class PositionerController(ImConWidgetController):
         self._runInThread('setPosition', positionerName, axis, position)
 
     def _runInThread(self, operation, positionerName, axis, dist):
+        if self.thread_running:
+            self.__logger.error(f"Thread is already running. Cannot execute {operation} command for {positionerName} on {axis} with distance {dist}")
+            return
+
+        self.thread_running = True
         positionerManager = self._master.positionersManager[positionerName]
         self.thread = QThread()
         self.worker = Worker(positionerManager, operation, axis, dist)
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self._onThreadFinished)
         self.worker.finished.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
         self.worker.error.connect(self._handleWorkerError)
         self.worker.finished.connect(lambda: self.updatePosition(positionerName, axis))
         self.thread.start()
 
+    def _onThreadFinished(self):
+        self.thread_running = False
+        self.thread.quit()
+        self.thread.wait()  # Ensure the thread is finished before deleting
+
     def _handleWorkerError(self, errorMsg):
         self.__logger.error(f"Worker error: {errorMsg}")
-
-    # modified end ______________________
-
-    '''
-    def move(self, positionerName, axis, dist):
-        """ Moves positioner by dist micrometers in the specified axis. RELATIVE MOVEMENT."""
-        self._master.positionersManager[positionerName].move(dist, axis)
-        self.updatePosition(positionerName, axis)
-    
-    def moveAbsolute(self, positionerName, axis):
-        """ Moves positioner by dist micrometers in the specified axis. ABSOLUTE MOVEMENT."""
-        dist = self._widget.getAbsPosition(positionerName, axis)
-        self._master.positionersManager[positionerName].moveAbsolute(dist, axis)
-        self.updatePosition(positionerName, axis)
-
-    def setPos(self, positionerName, axis, position):
-        """ Moves the positioner to the specified position in the specified axis. """
-        self._master.positionersManager[positionerName].setPosition(position, axis)
-        self.updatePosition(positionerName, axis)
-    '''
 
     def stepUp(self, positionerName, axis):
         self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis))

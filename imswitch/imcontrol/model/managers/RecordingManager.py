@@ -108,7 +108,13 @@ class TiffStorer(Storer):
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
         for channel, image in images.items():
             with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
-                tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
+
+                tiff.imwrite(path, image,
+                             imagej=True,
+                             resolution=(1/0.345, 1/0.345),
+                             metadata={'unit':'um', 'axes':'YX'}
+                )
+                             
                 logger.info(f"Saved image to tiff file {path}")
 
 class PNGStorer(Storer):
@@ -289,6 +295,36 @@ class RecordingManager(SignalInterface):
         self.__record = False
         if emitSignal:
             self.sigRecordingEnded.emit()
+
+    def snap(self, detectorNames, savename, saveMode, saveFormat, attrs):
+        '''
+                self._master.recordingManager.snap(detectorNames,
+                                           savename,
+                                           SaveMode(self._widget.getSnapSaveMode()),
+                                           SaveFormat(self._widget.getsaveFormat()),
+                                           attrs)
+        '''
+        acqHandle = self.__detectorsManager.startAcquisition()
+        try:
+            self.__logger.info('Snapping')
+            images = {}
+            for detectorName in detectorNames:
+                images[detectorName] = self._getNewFrame(detectorName)
+            if saveFormat:
+                storer = self.__storerMap[saveFormat]
+                if saveMode == SaveMode.Disk or saveMode == SaveMode.DiskAndRAM:
+                    # Save images to disk
+                    store = storer(savename, self.__detectorsManager)
+                    store.snap(images, attrs)
+                if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
+                    for channel, image in images.items():
+                        name = os.path.basename(f'{savename}_{channel}')
+                        self.sigMemorySnapAvailable.emit(name, image, savename, saveMode == SaveMode.DiskAndRAM)
+        finally:
+            self.__detectorsManager.stopAcquisition(acqHandle)
+            if saveMode == SaveMode.Numpy:
+                return images            
+
 
     def _record(self):
         shapes = {detectorName: self.detectorsManager[detectorName].shape

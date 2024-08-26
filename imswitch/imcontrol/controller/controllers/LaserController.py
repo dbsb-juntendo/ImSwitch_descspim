@@ -17,7 +17,7 @@ class LaserController(ImConWidgetController):
 
         # Set up lasers
         for lName, lManager in self._master.lasersManager:
-            print('--------------------------', lManager.isModulated)
+            
             self._widget.addLaser(
                 lName, lManager.valueUnits, lManager.valueDecimals, lManager.wavelength,
                 (lManager.valueRangeMin, lManager.valueRangeMax) if not lManager.isBinary else None,

@@ -21,13 +21,15 @@ class KDC101positionerManager(PositionerManager):
         self._port = positionerInfo.managerProperties['port']
         try:
             self.__logger.debug(f'Initializing KDC101 (name: {name}) on port {self._port}')
-            self.kdcstage = KDC101(serial_port=self._port)
-            self.__logger.info(f'Successfully initialized KDC101 (name: {name}) on port {self._port}, homing...')
-            time.sleep(5)
+            self.kdcstage = KDC101(serial_port=self._port, home=False)
+            self.__logger.info(f'Successfully initialized KDC101 (name: {name}) on port {self._port}, NOT HOMED!')
+            time.sleep(1)
             self._posConvFac = positionerInfo.managerProperties['posConvFac']
             self._velConvFac = positionerInfo.managerProperties['velConvFac']
             self._accConvFac = positionerInfo.managerProperties['accConvFac']
             self._initialspeed = positionerInfo.managerProperties.get("initialSpeed")
+            self._initialPosition = (self.kdcstage.status['position']/self._posConvFac)*1000   
+
             #TODO do it properly for the speed etc
             #self.setSpeed(self._initialspeed, positionerInfo.axes[0])     # setting the default speed to 1000 um/s, hardcoding it for now
             #self.setAcceleration(1000, positionerInfo.axes[0])     # setting the default acceleration to 1000 um/s2, hardcoding it for now
@@ -99,8 +101,13 @@ class KDC101positionerManager(PositionerManager):
         print(f'Calculating {mmps2} mmps multiplied with {self._accConvFac} to {acceleration} units/s2')
         return acceleration
     
-    #def home(self):
-    #    self.kdcstage.home()
+    def home(self, axis):
+        self.__logger.debug(f'Homing KDC101 axis {axis}')
+        self.kdcstage.home()
+        while self.kdcstage.status['position'] != 0:                     
+            time.sleep(0.5)
+            self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: 0')
+        self.__logger.debug('KDC101 homing finished')
 
     # difference between move_jog and move_relative?
 
@@ -115,7 +122,7 @@ class KDC101positionerManager(PositionerManager):
         self.__logger.debug(f'Moving KDC101 relative {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_relative(int(move_units))
         end_position = self.kdcstage.status['position'] + move_units
-        while self.kdcstage.status['position'] != end_position:                     # doesnt fully work
+        while self.kdcstage.status['position'] != end_position:                     
             time.sleep(0.5)
             self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {end_position}')
         self.__logger.debug(f'KDC101 relative movement finished')
@@ -130,7 +137,7 @@ class KDC101positionerManager(PositionerManager):
         move_units = self._mm_to_units(dist_um * 0.001)             # converting to mm
         self.__logger.debug(f'Moving KDC101 absolute {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_absolute(move_units)
-        while self.kdcstage.status['position'] != move_units:                     # doesnt fully work
+        while self.kdcstage.status['position'] != move_units:                     
             time.sleep(0.5)
             self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {move_units}')
         self.__logger.debug(f'KDC101 absolute movement finished')
