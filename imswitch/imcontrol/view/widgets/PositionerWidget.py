@@ -165,7 +165,7 @@ class PositionerWidget(Widget):
     def updateSpeed(self, positionerName, axis, speed):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         self.pars['Speed' + parNameSuffix].setText(f'<strong>{speed:.2f} µm/s</strong>')
-
+    
     # trigger stuff
     def getIOparams(self, positionerName, axis):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)

@@ -7,7 +7,6 @@ class ArduinoController(ImConWidgetController):
         super().__init__(*args, **kwargs)
 
         self.laserTTLs = [(lManager.wavelength, lManager._ttlLine.split('TTL')[-1]) for lName, lManager in self._master.lasersManager]
-        print(dir(self._master.arduinoManager))
         self.emissionFilters = self._master.arduinoManager._ArduinoManager__emissionFilters
         
         # connect the buttons

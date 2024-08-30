@@ -123,35 +123,3 @@ class ArduinoWidget(Widget):
         self.pos2button = guitools.BetterPushButton(f'2 - {options["2"]}')
         self.pos3button = guitools.BetterPushButton(f'3 - {options["3"]}')
         self.pos4button = guitools.BetterPushButton(f'4 - {options["4"]}')
-'''
-{   
-  "detectors": {
-    "thorlabscam": {
-      "analogChannel": null,
-      "digitalLine": null,
-      "managerName": "ThorCamSciManager",
-      "managerProperties": {
-        "cameraListIndex": 0,
-        "thorcamsci": {
-          "exposure": 50,
-          "gain": 0,
-          "blacklevel": 100,
-          "operation_mode": 0
-          }
-      },
-      "forAcquisition": true
-    }
-  },
-  "arduino":{
-    "port": "COM3",
-    "baudrate": 9600
-  },
-  "availableWidgets": [
-    "Settings",
-    "View",
-    "Recording",
-    "Image",
-    "Arduino"
-    ]
-}
-'''

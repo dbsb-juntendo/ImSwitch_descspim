@@ -14,7 +14,7 @@ class ArduinoManager(ABC):
         self.__baudrate = self.__ArduinoInfo.baudrate
         #TODO
         self.__emissionFilters = self.__ArduinoInfo.emissionFilters
-        
+        self._last_command = ''
         # initialise
         try:
             self.arduino = serial.Serial(self.__port, self.__baudrate)
@@ -35,6 +35,7 @@ class ArduinoManager(ABC):
     def sendToArd(self, tableData):
         self.__logger.debug(f'Sending data to Arduino.')
         self.arduino.write(tableData.encode('utf-8'))
+        self._last_command = tableData
 
     def startScan(self):
         self.__logger.debug(f'Starting scan.')

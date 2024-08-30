@@ -72,14 +72,13 @@ class PyAAOPTOLaserManager(LaserManager):
         else:
             self._aotf.disable_channel(self._channel)
             self._aotf.set_channel_input_mode(self._channel, InputMode.INTERNAL)
-
     
     def setModulationPower(self, power):
-        #TODO contact cobolt, as set_modulation_power() function is not implemented for DPL lasers
-        # need to use set_modulation_current_high() and set_modulation_current_low() functions
-        # y = 9.3916x + 1219.3
         self.__logger.debug(f'Set modulation power to: {power} dBm')
         self.setValue(power)
+
+    def getModulationPower(self):
+        return self._aotf.get_power_dbm(self._channel)
                             
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

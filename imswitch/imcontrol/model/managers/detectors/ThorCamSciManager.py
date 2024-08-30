@@ -52,8 +52,8 @@ class ThorCamSciManager(DetectorManager):
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
-            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
-                                                valueUnits='µm', editable=True),
+            'cameraEffPixelsize': DetectorNumberParameter(group='Misc', value=pixelSize,
+                                                valueUnits='um', editable=True),
             "trigger_polarity": DetectorNumberParameter(group='Misc',
                                                     value=0, valueUnits='',
                                                     editable=True),                                    
@@ -175,12 +175,12 @@ class ThorCamSciManager(DetectorManager):
     @property
     def pixelSizeUm(self):
         """set the camera pixel size in um"""
-        umxpx = self.parameters['Camera pixel size'].value
+        umxpx = self.parameters['cameraEffPixelsize'].value
         return [1, umxpx, umxpx]
 
     def setPixelSizeUm(self, pixelSizeUm):
         """Set the camera pixel size in um"""
-        self.parameters['Camera pixel size'].value = pixelSizeUm
+        self.parameters['cameraEffPixelsize'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
         """Crop the camera frame to the specified size and position. This is a parameter carried on the camera"""

@@ -103,6 +103,9 @@ class CommunicationChannel(SignalInterface):
     # update stages signal
     sigUpdateStages = Signal(str, str)
 
+    # metadata signal
+    sigGetMetaData = Signal(str, str)  # (stageName, axisName)
+
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)

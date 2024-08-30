@@ -80,6 +80,9 @@ class PyCobolt0601LaserManager(LaserManager):
         power = int(power)
         self._laser.set_modulation_power(power)
         self.__logger.debug(f'Set modulation power to: {power}')
+    
+    def getModulationPower(self):
+        return self._laser.get_modulation_power()
 
     def getAllDeviceNames(self):                    # wonder where thats needed
         self.__logger.debug(f'Available devices: {list_lasers()}')

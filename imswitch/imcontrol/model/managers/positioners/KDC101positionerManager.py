@@ -122,7 +122,8 @@ class KDC101positionerManager(PositionerManager):
         self.__logger.debug(f'Moving KDC101 relative {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_relative(int(move_units))
         end_position = self.kdcstage.status['position'] + move_units
-        while self.kdcstage.status['position'] != end_position:                     
+        while self.kdcstage.status['position'] != end_position:
+        #while self.kdcstage.status['position'] < move_units - 2 or self.kdcstage.status['position'] > move_units + 2 or self.kdcstage.status['position'] != 0:                     
             time.sleep(0.5)
             self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {end_position}')
         self.__logger.debug(f'KDC101 relative movement finished')
@@ -138,6 +139,7 @@ class KDC101positionerManager(PositionerManager):
         self.__logger.debug(f'Moving KDC101 absolute {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_absolute(move_units)
         while self.kdcstage.status['position'] != move_units:                     
+        #while self.kdcstage.status['position'] < move_units - 2 or self.kdcstage.status['position'] > move_units + 2 or self.kdcstage.status['position'] != 0:
             time.sleep(0.5)
             self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {move_units}')
         self.__logger.debug(f'KDC101 absolute movement finished')
@@ -147,6 +149,7 @@ class KDC101positionerManager(PositionerManager):
         self.__logger.debug(f'Moving KDC101 absolute {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_absolute(move_units)
         while self.kdcstage.status['position'] != move_units:                     # doesnt fully work
+        #while self.kdcstage.status['position'] < move_units - 2 or self.kdcstage.status['position'] > move_units + 2 or self.kdcstage.status['position'] != 0:       
             time.sleep(0.5)
             self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {move_units}')
         self.__logger.debug(f'KDC101 absolute movement finished')
@@ -167,7 +170,12 @@ class KDC101positionerManager(PositionerManager):
 
     # triggering related functions
     def get_triggerIOconfig(self):
-        return self.kdcstage.trigger_params()
+        return self.kdcstage.trigger_params_
+        
+
+    def get_rel_move_params(self):
+        rel_distance = self.kdcstage.moverelparams_[0][0]['relative_distance']
+        return self._units_to_mm(rel_distance)*1000
     
     def set_triggerIOconfig(self, io_params):
         trig1_mode, trig2_mode = io_params

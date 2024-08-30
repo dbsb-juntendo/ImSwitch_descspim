@@ -18,6 +18,7 @@ from ome_zarr.writer import write_multiscales_metadata
 from ome_zarr.format import format_from_version
 import abc
 import logging
+import json
 
 from imswitch.imcontrol.model.managers.DetectorsManager import DetectorsManager
 
@@ -238,7 +239,8 @@ class RecordingManager(SignalInterface):
 
     def startRecording(self, detectorNames, recMode, savename, 
                        saveMode, attrs, saveFormat=SaveFormat.TIFF, 
-                       singleMultiDetectorFile=False, singleLapseFile=False,recFrames=None, recTime=None):
+                       singleMultiDetectorFile=False, singleLapseFile=False,recFrames=None, recTime=None,
+                       save_metadata=None):
         
         '''
                     self.recordingArgs = {                          # from RecordingController.py 
@@ -266,6 +268,7 @@ class RecordingManager(SignalInterface):
         self.recTime = recTime
         self.singleMultiDetectorFile = singleMultiDetectorFile
         self.singleLapseFile = singleLapseFile
+        self.metadata = save_metadata
         self.__detectorsManager.execOnAll(lambda c: c.flushBuffers(),
                                           condition=lambda c: c.forAcquisition)
         
@@ -325,7 +328,6 @@ class RecordingManager(SignalInterface):
             if saveMode == SaveMode.Numpy:
                 return images            
 
-
     def _record(self):
         shapes = {detectorName: self.detectorsManager[detectorName].shape
                   for detectorName in self.detectorNames}
@@ -363,7 +365,7 @@ class RecordingManager(SignalInterface):
                     saving_path_tif = saving_path_tif + '_' + str(int(max(list_ids)) + 1)
                     self.__logger.info(f'Creating save folder at {saving_path_tif}')
                     os.mkdir(saving_path_tif)
-            
+
             elif self.saveFormat == SaveFormat.HDF5:
                 self.__logger.error(f'HDF5 format not yet implemented')
             elif self.saveFormat == SaveFormat.ZARR:
@@ -375,6 +377,12 @@ class RecordingManager(SignalInterface):
                 if self.recFrames is None:
                     raise ValueError('recFrames must be specified for RecMode.SpecFrames')
                 
+                # make metadata file
+                print('Wrtingng metadata')
+                with open(f'{saving_path_tif}/metadata.json', 'w') as f:
+                    print(self.metadata)
+                    json.dump(self.metadata, f, indent=4)
+
                 # main acquisition loop
                 while (self.record and any([currentFrame[detectorName] < self.recFrames for detectorName in self.detectorNames])):
                     for detectorName in self.detectorNames:
@@ -383,8 +391,11 @@ class RecordingManager(SignalInterface):
                         if newFrame is not None:
                             if self.saveFormat == SaveFormat.TIFF:
                                 prefix = f'/image_{currentFrame[detectorName]}.tif'
-                                tiff.imwrite(saving_path_tif + prefix, newFrame)
+                                #tiff.imwrite(saving_path_tif + prefix, newFrame)
+                                with tiff.TiffWriter(saving_path_tif + prefix) as tif:
+                                    tif.write(newFrame)
                                 currentFrame[detectorName] += 1
+                                print(f'Frame {currentFrame[detectorName]}')
                             else:
                                 self.__logger.error(f'Other recording formats not yet implemented')
                         else:
@@ -407,3 +418,4 @@ class RecordingManager(SignalInterface):
         newFrames = self.detectorsManager[detectorName].getLastImage()
         newFrames = np.array(newFrames)
         return newFrames
+  

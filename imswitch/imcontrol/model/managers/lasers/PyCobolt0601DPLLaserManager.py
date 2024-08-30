@@ -85,6 +85,14 @@ class PyCobolt0601DPLLaserManager(LaserManager):
         self._laser.set_modulation_current_low(0)
         self.__logger.debug(f'Desired power: {power}, set modulation current to: {mA} +/- 5%')
 
+    def getModulationPower(self):
+        #TODO contact cobolt, as set_modulation_power() function is not implemented for DPL lasers
+        # need to use set_modulation_current_high() and set_modulation_current_low() functions
+        # y = 9.3916x + 1219.3
+        high, low = self._laser.get_modulation_current()
+        power = ((high - 1219.3) / 9.3916)
+        return power
+
     def getAllDeviceNames(self):                    # wonder where thats needed
         self.__logger.debug(f'Available devices: {list_lasers()}')
         return list_lasers()

@@ -21,6 +21,7 @@ Further documentation is available at [imswitch.readthedocs.io](https://imswitch
 
 ### important
 
+- stage movement give a few DU puffer
 - display max value while live
 - prohibit using the green laser within the first few minutes for warmup (has high power in the beginning  )
 - naoari viewer widget to visualize it better with the three colors for example

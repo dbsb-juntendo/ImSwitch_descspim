@@ -292,6 +292,8 @@ class CameraThorCamSci:
             self.set_operation_mode(int(property_value))
         elif property_name == "trigger_polarity":
             self.set_trigger_polarity(property_value)
+        elif property_name == "cameraEffPixelsize":         # this does not need to be here
+            pass
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -313,6 +315,8 @@ class CameraThorCamSci:
             property_value = self.camera.operation_mode
         elif property_name == "trigger_polarity":
             property_value = self.trigger_polarity
+        elif property_name == "cameraEffPixelsize":
+            pass                # this does not need to be here
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False

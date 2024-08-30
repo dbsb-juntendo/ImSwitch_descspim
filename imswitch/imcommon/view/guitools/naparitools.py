@@ -58,6 +58,8 @@ class EmbeddedNapari(napari.Viewer):
                 pass
         
         self.scale_bar.visible = True
+        self.scale_bar.unit = 'um'
+
 
     def add_image(self, *args, protected=False, **kwargs):
         result = super().add_image(*args, **kwargs)

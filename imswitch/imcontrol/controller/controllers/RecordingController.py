@@ -140,6 +140,43 @@ class RecordingController(ImConWidgetController):
                                                     image,
                                                     attrs)
 
+    def make_metadata(self):
+        metadata = {}
+        
+        metadata['date'] = time.strftime('%Y-%m-%d')
+        metadata['time'] = time.strftime('%H:%M:%S')
+        
+        detectorName = self._master.detectorsManager.getCurrentDetectorName()
+        metadata['detector_name'] = detectorName
+        metadata['detector_exposure_time'] = self._master.detectorsManager[detectorName].parameters['exposure'].value
+        metadata['detector_exposure_time_unit'] = self._master.detectorsManager[detectorName].parameters['exposure'].valueUnits
+        metadata['detector_pixel_size'] = self._master.detectorsManager[detectorName].parameters['cameraEffPixelsize'].value
+        metadata['detector_pixel_size_unit'] = self._master.detectorsManager[detectorName].parameters['cameraEffPixelsize'].valueUnits
+
+        # stages
+        for stage in [(pName, pManager) for pName, pManager in self._master.positionersManager if pManager.forPositioning]:
+            metadata[stage[0] + '_start_position'] = round(self._master.positionersManager[stage[0]].getPosition(stage[1].axes[0]), 4)
+            metadata[stage[0] + '_step_size'] = round(self._master.positionersManager[stage[0]].get_rel_move_params(), 4)
+
+        # channels 
+        #lasers = [[(lManager.wavelength, lManager._ttlLine.split('TTL')[-1]) for lName, lManager in self._master.lasersManager]]
+        lasers = {}
+        for lName, lManager in self._master.lasersManager:
+            lasers[lManager._ttlLine.split('TTL')[-1]] = {'wavelength': lManager.wavelength, 'power': lManager.getModulationPower(), 'unit': lManager.valueUnits, 'name': lName}
+        filters = self._master.arduinoManager._ArduinoManager__emissionFilters
+        
+        sent_command = self._master.arduinoManager._last_command
+        channels = {}
+        for i in range(0,len(sent_command), 2):
+            channels[i] = {'laser_name':lasers[sent_command[i+1]]['name'],
+                           'laser_wavelength':lasers[sent_command[i+1]]['wavelength'],
+                           'laser_power':lasers[sent_command[i+1]]['power'],
+                           'laser_unit':lasers[sent_command[i+1]]['unit'],
+                           'laser_ttl_line':sent_command[i+1],
+                           'emission_filter':filters[sent_command[i]]}
+        metadata['channels'] = channels    
+        return metadata
+
     def toggleREC(self, checked):
         """ Start or end recording. """
         if checked and not self.recording:
@@ -171,9 +208,11 @@ class RecordingController(ImConWidgetController):
                 'attrs': {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                           for detectorName in detectorsBeingCaptured},
                 'singleMultiDetectorFile': (len(detectorsBeingCaptured) > 1 and
-                                            self._widget.getMultiDetectorSingleFile())
+                                            self._widget.getMultiDetectorSingleFile()),
+                'save_metadata': self.make_metadata()
             }
-
+            print(self.recordingArgs)
+            print('recordingargs')
             if self.recMode == RecMode.SpecFrames:
                 self.recordingArgs['recFrames'] = self._widget.getNumExpositions()
                 self._master.recordingManager.startRecording(**self.recordingArgs)
