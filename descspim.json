@@ -8,9 +8,8 @@
         "cameraListIndex": 0,
         "thorcamsci": {
           "exposure": 50,
-          "gain": 0,
-          "blacklevel": 100,
-          "operation_mode": 2
+          "operation_mode": 0,
+          "cameraEffPixelsize": 0.345
           }
       },
       "forAcquisition": true
@@ -20,7 +19,7 @@
     "camera_stage": {
         "managerName": "KDC101positionerManager",
         "managerProperties": {
-            "port": "COM14",
+            "port": "COM15",
             "units": "mm",
             "posConvFac": 34554.96,
             "velConvFac": 772981.3692,
@@ -35,29 +34,30 @@
       "forScanning": true
     },
     "sample_stage": {
-        "managerName": "KDC101positionerManager",
-        "managerProperties": {
-            "port": "COM15",
-            "units": "mm",
-            "posConvFac": 34554.96,
-            "velConvFac": 772981.3692,
-            "accConvFac": 263.8443072,
-            "initialSpeed" : 100
-        },
-        "axes": [
-          "Y"
-      ],
-      "isPositiveDirection": true,
-      "forPositioning": true,
-      "forScanning": true
-    }
+      "managerName": "KDC101positionerManager",
+      "managerProperties": {
+          "port": "COM14",
+          "units": "mm",
+          "posConvFac": 34554.96,
+          "velConvFac": 772981.3692,
+          "accConvFac": 263.8443072, 
+          "initialSpeed" : 100
+      },
+      "axes": [
+        "Y"
+    ],
+    "isPositiveDirection": true,
+    "forPositioning": true,
+    "forScanning": true
+   }
   },
     "availableWidgets": [
       "Settings",
       "View",
       "Recording",
       "Image",
-      "Positioner"
+      "Positioner",
+      "ZAlignment"
     ]
   }
   
