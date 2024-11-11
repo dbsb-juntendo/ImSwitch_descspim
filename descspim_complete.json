@@ -77,7 +77,7 @@
       "valueRangeStep": 0.1
     },
     "cobolt 06-DPL 594": {
-      "managerName": "PyCobolt0601DPLLaserManager",
+      "managerName": "PyCobolt0601LaserManager",
       "managerProperties": {
         "port": "COM12",
         "digitalLine": "Arduino/TTL2"

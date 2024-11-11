@@ -298,6 +298,8 @@ class RecordingManager(SignalInterface):
         self.__record = False
         if emitSignal:
             self.sigRecordingEnded.emit()
+        #detectorName = self.__detectorsManager.getCurrentDetectorName()
+        #self.detectorsManager[detectorName].set_operation_mode(0)
 
     def snap(self, detectorNames, savename, saveMode, saveFormat, attrs):
         '''

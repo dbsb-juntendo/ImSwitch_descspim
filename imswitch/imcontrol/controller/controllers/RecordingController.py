@@ -189,6 +189,10 @@ class RecordingController(ImConWidgetController):
             self.savename = os.path.join(folder, self.getFileName()) + '_rec'
 
             try:
+                # change operation mode to triggered
+                #detectorName = self._master.detectorsManager.getCurrentDetectorName()
+                #self._master.detectorsManager[detectorName].set_operation_mode(1)
+
                 self.__logger.debug(f'Starting recording with arduino')
                 self._master.arduinoManager.startScan()
             except AttributeError:

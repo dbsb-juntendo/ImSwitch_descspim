@@ -1,5 +1,5 @@
 from imswitch.imcommon.model import initLogger, pythontools
-from pycobolt import Cobolt06MLD
+from pycobolt import Cobolt06
 from pycobolt import list_lasers
 from .LaserManager import LaserManager
 import importlib
@@ -19,17 +19,19 @@ class PyCobolt0601LaserManager(LaserManager):
 
         self._port = laserInfo.managerProperties['port']
         self._ttlLine = laserInfo.managerProperties['digitalLine']
-        self.__logger.debug(f'Initializing Cobolt0601-DPL laser (name: {name}) on port {self._port}')
-
+        self.__logger.debug(f'Initializing Cobolt0601 laser (name: {name}) on port {self._port}')
+        self._is_DPL = False
+        if 'DPL' in name:
+            self._is_DPL = True
         try:    
-            self._laser = Cobolt06MLD(self._port)
+            self._laser = Cobolt06(port=self._port)
             self._digitalMod = False
 
             # start up by turning on modulation power -> laser is off
-            self._laser.set_power(5)
-            self._laser.modulation_mode()
+            self._laser.constant_current(0)
             # check mode of laser
             mode = self._laser.get_mode()
+
             self.__logger.debug(f'Laser mode is: {mode}, might have to turn the key.')
             super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0, isModulated=True)
         
@@ -45,22 +47,22 @@ class PyCobolt0601LaserManager(LaserManager):
 
     def setEnabled(self, enabled):      # toggle laser on or off
         if enabled:                             # laser is toggled on 
-            self._laser.digital_modulation(0)   # turn off dig. modulation
             self._laser.constant_power()    # set laser to constant power mode
-        else:                                   # If laser should be disabled, turn off by setting scanmode to active -> modulation mode
-            self._laser.modulation_mode()   # switch to modulation mode
-            self._laser.digital_modulation(0)   # but make sure to have digital modulation off
+        else:     
+            self._laser.constant_current(0)                       # If laser should be disabled, turn off by setting scanmode to active -> modulation mode
             
     def setValue(self, power):
-        power = int(power)
+        if self._is_DPL:
+            power = int(power)*1000
+        else:
+            power = int(power)
         self._laser.set_power(power)
         self.__logger.debug(f'Set power to: {power}')
 
     def setScanModeActive(self, active):            
 
         if active == False:                      # turn off everything
-            self._laser.digital_modulation(0)    # turn off dig. modulation
-            self._laser.modulation_mode(0)
+            self._laser.set_power(0)                # If laser should be disabled, turn off by setting scanmode to active -> modulation mode
         else:
         #TODO
         # this is needed when imswitch is handling the scan
@@ -70,10 +72,9 @@ class PyCobolt0601LaserManager(LaserManager):
 
     def setModulationEnabled(self, enabled):
         if enabled:
-            self._laser.modulation_mode()
-            self._laser.digital_modulation(1)
+            self._laser.power_modulation_mode(digital_enabled=True)
         else:
-            self._laser.digital_modulation(0)
+            self._laser.power_modulation_mode(digital_enabled=False)
 
     
     def setModulationPower(self, power):
