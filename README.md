@@ -38,26 +38,20 @@ Further documentation is available at [imswitch.readthedocs.io](https://imswitch
 ### important
 
 - switch filter and laser options in widget
+- change position to actual filter in widget
 - remove operation mode and modulation mode on laser and synchronize this with the record button
-- stage movement give a few DU puffer
 - display max value while live
 - prohibit using the green laser within the first few minutes for warmup (has high power in the beginning  )
 - naoari viewer widget to visualize it better with the three colors for example
-- make metadata file
 - jog mode for the stage, easier to find the sample (two buttons each direction per stage for two different speeds)
 - window is frozen while recording, do threading
 - add pixel size to recorded data -                 tiff.imwrite(path, image,
                              imagej=True,
                              resolution=(1/0.345, 1/0.345),
                              metadata={'unit':'um', 'axes':'YX'})
-- 594 modulation does not work again, there is no power modulation mode from python BUT in the software? email cobolt
 - when stopping live mode turn off all lasers (toggle)
 - rewrite kdcmanager so that original api file can be used
-
-### less important
-
-- crop
-- psf widget
+- line widget with plot with psf wwidget
 - line widget similar to fiji
 - update stages after recording finished
 - change window layout for when using a potrait style screen
