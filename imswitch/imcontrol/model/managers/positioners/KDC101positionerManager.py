@@ -1,5 +1,7 @@
 from imswitch.imcommon.model import initLogger
 from thorlabs_apt_device.devices.kdc101 import KDC101
+from thorlabs_apt_device import protocol as apt
+from thorlabs_apt_device.enums import EndPoint
 from .PositionerManager import PositionerManager
 import time
 """
@@ -11,7 +13,136 @@ Actuator Z8235B  EncCnt per mm  34554.96  Velocity 772981.3692 (units/s)  Accele
 EncCnt Encoder count -> 1 unit is 1 mm /34554.96 = 28.93940552 nm
 In 1 mm there are 34554.96 encoder counts/device units
 
+This manager has been written based on the thorlabs_apt_device library (https://thorlabs-apt-device.readthedocs.io/en/latest/index.html)
 """
+class KDC101_triggered(KDC101):
+    """
+    An adapted KDC101 class to include trigger parameters such as 
+    - relative distance covered by the stage when IO triggered
+    - trigger parameters such as mode and polarity for IO1 and IO2
+    - processing of message of both parameters
+    """
+    def __init__(self, serial_port=None, vid=None, pid=None, manufacturer=None, product=None, serial_number="27",
+                 location=None, home=True, invert_direction_logic=True, swap_limit_switches=True):
+                 
+        super().__init__(serial_port=serial_port, vid=vid, pid=pid, manufacturer=manufacturer, product=product,
+                         serial_number=serial_number, location=location, home=home,
+                         invert_direction_logic=invert_direction_logic, swap_limit_switches=swap_limit_switches)
+                         
+        # own parameters
+        self.moverelparams_ = [[{                # 0x0445
+            "relative_distance" : 0,
+            "msg" : "",
+            "msgid" : 0,
+            "dest" : 0,
+            "source" : 0,
+            "chan_ident" : 0,
+            } for _ in self.channels] for _ in self.bays]
+        
+        # Request mot_req_moverelparams
+        for bay in self.bays:
+            for channel in self.channels:
+                self._loop.call_soon_threadsafe(self._write, apt.mot_req_moverelparams(source=EndPoint.HOST, dest=bay, chan_ident=channel))
+
+
+        self.trigger_params_ = [[{              # 0x0524
+            # Actual integer code returned by device
+            # Unpacked meaning of mode bits
+            "trig1_mode" : "",
+            "trig1_polarity" : "",
+            "trig2_mode" : "",
+            "trig2_polarity" : "",
+            # Update message fields
+            "msg" : "",
+            "msgid" : 0,
+            "source" : 0,      
+            "dest" : 0,        
+            "chan_ident" : 0,
+        } for _ in self.channels] for _ in self.bays]
+
+        # Request current trigger modes
+        for bay in self.bays:
+            for channel in self.channels:
+                self._loop.call_soon_threadsafe(self._write, apt.mot_req_kcubetrigconfig(source=EndPoint.HOST, dest=bay, chan_ident=channel))
+
+    def _process_message(self, m):
+        super()._process_message(m)
+        if m.msg in ("mot_get_kcubetrigconfig","mot_get_moverelparams"):
+            # Check if source matches one of our bays
+            try:
+                bay_i = self.bays.index(m.source)
+            except ValueError:
+                # Ignore message from unknown bay id
+                self._log.warn(f"Message {m.msg} has unrecognised source={m.source}.")
+                bay_i = 0
+            # Check if channel matches one of our channels
+            try:
+                channel_i = self.channels.index(m.chan_ident)
+            except ValueError:
+                # Ignore message from unknown channel id
+                self._log.warn(f"Message {m.msg} has unrecognised channel={m.chan_ident}.")
+                channel_i = 0
+
+        if m.msg == "mot_get_moverelparams":
+            self.moverelparams_[bay_i][channel_i].update(m._asdict())
+        elif m.msg == "mot_get_kcubetrigconfig":
+            self.trigger_params_[bay_i][channel_i].update(m._asdict())
+        else:
+            pass
+
+    def set_moverelparams(self, relative_distance=0, bay=0, channel=0):
+        """
+        Used to set the relative move parameters for the specified motor
+        channel. The only significant parameter currently is the relative
+        move distance itself. This gets stored by the controller and is used
+        the next time a relative move is initiated. See 0x0445
+
+        :param relative_distance:    The distance to move. 
+        :param bay: Index (0-based) of controller bay to send the command.
+        :param channel: Index (0-based) of controller bay channel to send the command.
+        """
+        self._log.debug(f"Setting relative move parameters to relative_distance: {relative_distance} [bay={self.bays[bay]:#x}, channel={self.channels[channel]}].")
+        self._loop.call_soon_threadsafe(self._write, apt.mot_set_moverelparams(source=EndPoint.HOST, dest=self.bays[bay], chan_ident=self.channels[channel], relative_distance=relative_distance))
+        # Update status with new parameters
+        self._loop.call_soon_threadsafe(self._write, apt.mot_req_moverelparams(source=EndPoint.HOST, dest=self.bays[bay], chan_ident=self.channels[channel]))
+
+    def set_triggerparams(self, trig1_mode=0, trig1_polarity=0, trig2_mode=0, trig2_polarity=1, bay=0, channel=0):
+        """
+        The K-Cube motor controllers have two bidirectional trigger ports
+        (TRIG1 and TRIG2) that can be used to read an external logic signal
+        or output a logic level to control external equipment. Either of them
+        can be independently configured as an input or an output and the
+        active logic state can be selected High or Low to suit the
+        requirements of the application. Electrically the ports output 5 Volt
+        logic signals and are designed to be driven from a 5 Volt logic.
+        When the port is used in the input mode, the logic levels are TTL
+        compatible, i.e. a voltage level less than 0.8 Volt will be recognised
+        as a logic LOW and a level greater than 2.4 Volt as a logic HIGH. The
+        input contains a weak pull-up, so the state of the input with nothing
+        connected will default to a logic HIGH. The weak pull-up feature
+        allows a passive device, such as a mechanical switch to be
+        connected directly to the input.
+        When the port is used as an output it provides a push-pull drive of 5
+        Volts, with the maximum current limited to approximately 8 mA.
+        The current limit prevents damage when the output is accidentally
+        shorted to ground or driven to the opposite logic state by external
+        circuity. See 0x0523
+
+        #TODO add more explanation
+        :param trig1_mode:          The mode of the trigger 1 port.             Mode IN relative move = 2, Mode OUT - In Motion = 11
+        :param trig1_polarity:      The polarity of the trigger 1 port.         Polarity HIGH = 1, Polarity LOW = 2
+        :param trig2_mode:          The mode of the trigger 2 port.
+        :param trig2_polarity:      The polarity of the trigger 2 port.
+        :param bay:                 Index (0-based) of controller bay to send the command.
+        :param channel:             Index (0-based) of controller bay channel to send the command.
+        """
+        self._log.debug(f"Setting trigIO parameters: trig1_mode={trig1_mode}, trig1_polarity={trig1_polarity}, trig2_mode={trig2_mode}, trig2_polarity={trig2_polarity} [bay={self.bays[bay]:#x}, channel={self.channels[channel]}].")
+        self._loop.call_soon_threadsafe(self._write, apt.mot_set_kcubetrigioconfig(source=EndPoint.HOST, dest=self.bays[bay], chan_ident=self.channels[channel], trig1_mode=trig1_mode, trig1_polarity=trig1_polarity, trig2_mode=trig2_mode, trig2_polarity=trig2_polarity))
+        # Update status with new parameters
+        self._loop.call_soon_threadsafe(self._write, apt.mot_req_kcubetrigconfig(source=EndPoint.HOST, dest=self.bays[bay], chan_ident=self.channels[channel]))
+
+    
+
 
 class KDC101positionerManager(PositionerManager):
 
@@ -21,7 +152,7 @@ class KDC101positionerManager(PositionerManager):
         self._port = positionerInfo.managerProperties['port']
         try:
             self.__logger.debug(f'Initializing KDC101 (name: {name}) on port {self._port}')
-            self.kdcstage = KDC101(serial_port=self._port, home=False)
+            self.kdcstage = KDC101_triggered(serial_port=self._port, home=False)
             self.__logger.info(f'Successfully initialized KDC101 (name: {name}) on port {self._port}, NOT HOMED!')
             time.sleep(1)
             self._posConvFac = positionerInfo.managerProperties['posConvFac']
@@ -54,7 +185,8 @@ class KDC101positionerManager(PositionerManager):
                         'source': 80,
                         'dest': 1,
                         'chan_ident': 1}
-        
+            
+            self.timeout = 30   # 30 seconds timeout for moving
             
             # hard code step size, speed and acceleration
             self.kdcstage.set_velocity_params(self._mmpers2_to_unitspers2(self.hard_coded_velparams['acceleration']), 
@@ -122,10 +254,13 @@ class KDC101positionerManager(PositionerManager):
         self.__logger.debug(f'Moving KDC101 relative {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_relative(int(move_units))
         end_position = self.kdcstage.status['position'] + move_units
+        start_time = time.time()
         while self.kdcstage.status['position'] != end_position:
-        #while self.kdcstage.status['position'] < move_units - 2 or self.kdcstage.status['position'] > move_units + 2 or self.kdcstage.status['position'] != 0:                     
             time.sleep(0.5)
             self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {end_position}')
+            if time.time() - start_time > self.timeout:
+                self.__logger.warning(f'Movement timeout after {self.timeout} seconds. Target position not reached.')
+                return
         self.__logger.debug(f'KDC101 relative movement finished')
 
     def setPosition(self, axis, dist_um: float):
@@ -138,20 +273,28 @@ class KDC101positionerManager(PositionerManager):
         move_units = self._mm_to_units(dist_um * 0.001)             # converting to mm
         self.__logger.debug(f'Moving KDC101 absolute {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_absolute(move_units)
+        start_time = time.time()
         while self.kdcstage.status['position'] != move_units:                     
         #while self.kdcstage.status['position'] < move_units - 2 or self.kdcstage.status['position'] > move_units + 2 or self.kdcstage.status['position'] != 0:
             time.sleep(0.5)
             self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {move_units}')
+            if time.time() - start_time > self.timeout:
+                self.__logger.warning(f'Movement timeout after {self.timeout} seconds. Target position not reached.')
+                return
         self.__logger.debug(f'KDC101 absolute movement finished')
     
     def moveAbsolute(self, axis, dist_um):
         move_units = self._mm_to_units(dist_um * 0.001)             # converting to mm
         self.__logger.debug(f'Moving KDC101 absolute {axis} by {move_units} units or {dist_um} um or {dist_um * 0.001} mm')
         self.kdcstage.move_absolute(move_units)
+        start_time = time.time()
         while self.kdcstage.status['position'] != move_units:                     # doesnt fully work
         #while self.kdcstage.status['position'] < move_units - 2 or self.kdcstage.status['position'] > move_units + 2 or self.kdcstage.status['position'] != 0:       
             time.sleep(0.5)
             self.__logger.debug(f'Current position: {self.kdcstage.status["position"]}, end position: {move_units}')
+            if time.time() - start_time > self.timeout:
+                self.__logger.warning(f'Movement timeout after {self.timeout} seconds. Target position not reached.')
+                return
         self.__logger.debug(f'KDC101 absolute movement finished')
     
     def updatePosition(self):

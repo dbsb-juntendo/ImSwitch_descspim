@@ -33,25 +33,29 @@ Further documentation is available at [imswitch.readthedocs.io](https://imswitch
 - When using a cobolt DPL laser, the power in mW is converted to mA and sent to the laser, as the set_modulation_power() function is not implemented
 - The ttl pins that lead to the lasers should be single digit
 
+### Changes since last release 18.02.2025
+
+- fixed pixel sizes when opening in fiji
+- rewrite kdcmanager so that original api file can be used
+- fix error when stage is moving too long, stop the movement
+- switch filter and laser options in widget
+- threading while "move to pos1" and "move to pos2" in zalignment widget
+- when more than 2 channels, interleaved acquisition is not post-processed with tick box in recording widget
+
 ## TODO
 
-### important
-
-- switch filter and laser options in widget
 - change position to actual filter in widget
 - remove operation mode and modulation mode on laser and synchronize this with the record button
 - display max value while live
 - prohibit using the green laser within the first few minutes for warmup (has high power in the beginning  )
-- naoari viewer widget to visualize it better with the three colors for example
+- napari viewer widget to visualize it better with the three colors for example
 - jog mode for the stage, easier to find the sample (two buttons each direction per stage for two different speeds)
 - window is frozen while recording, do threading
-- add pixel size to recorded data -                 tiff.imwrite(path, image,
-                             imagej=True,
-                             resolution=(1/0.345, 1/0.345),
-                             metadata={'unit':'um', 'axes':'YX'})
+- in gui scale bar is correct for live imaging but not for snapped images (while they get saved with the right pixel size)
 - when stopping live mode turn off all lasers (toggle)
-- rewrite kdcmanager so that original api file can be used
 - line widget with plot with psf wwidget
 - line widget similar to fiji
 - update stages after recording finished
-- change window layout for when using a potrait style screen
+- change window layout for when using a potrait style screen (can be done manually in the gui for now)
+
+

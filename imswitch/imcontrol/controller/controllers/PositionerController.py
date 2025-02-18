@@ -7,7 +7,6 @@ import time
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtCore import pyqtSlot
 
-from PyQt5.QtCore import QObject, pyqtSignal
 
 class Worker(QObject):
     finished = pyqtSignal()

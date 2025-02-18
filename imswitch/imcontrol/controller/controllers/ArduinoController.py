@@ -62,13 +62,12 @@ class ArduinoController(ImConWidgetController):
 
         for row in range(num_rows):
             channel_item = table_widget.item(row, 0)
-            filter_combo = table_widget.cellWidget(row, 1)
-            laser_combo = table_widget.cellWidget(row, 2)
+            filter_combo = table_widget.cellWidget(row, 2)
+            laser_combo = table_widget.cellWidget(row, 1)
 
             if channel_item is not None and filter_combo is not None and laser_combo is not None:
                 channel = channel_item.text()
                 filter_selected = filter_combo.currentText()[0]
-                print(filter_selected)
                 laser_selected = laser_combo.currentText().split()[-1]
                 table_data.append((channel, filter_selected, laser_selected))
 

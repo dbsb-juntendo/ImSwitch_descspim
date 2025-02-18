@@ -11,6 +11,7 @@ except:
 import numpy as np
 import tifffile as tiff
 import cv2
+import gc
 
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
 from imswitch.imcommon.model import initLogger
@@ -19,6 +20,8 @@ from ome_zarr.format import format_from_version
 import abc
 import logging
 import json
+from natsort import os_sorted
+
 
 from imswitch.imcontrol.model.managers.DetectorsManager import DetectorsManager
 
@@ -237,10 +240,67 @@ class RecordingManager(SignalInterface):
             newPath = f'{pathWithoutExt}_{numExisting}{pathExt}'
         return newPath
 
+    def channel_post_process(self, saving_path_tif, num_channels):
+        try:
+            files = os_sorted(os.listdir(saving_path_tif))
+            tif_files = [f for f in files if f.endswith('.tif')]
+            
+            # Get dimensions from first file
+            sample_image = tiff.imread(saving_path_tif + '/' + tif_files[0])
+            zsteps = len(tif_files)//num_channels
+            
+            # Create output directory
+            save_path = saving_path_tif + '_reshaped_data/'
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            
+            # Process each channel separately to save memory
+            for c in range(num_channels):
+                # Pre-allocate array for this channel
+                channel_stack = np.zeros((zsteps, sample_image.shape[0], sample_image.shape[1]), 
+                                      dtype=np.uint16)
+                
+                # Fill the channel stack
+                for z in range(zsteps):
+                    if z % 2 == 0:  # Forward scan
+                        file_idx = z * num_channels + c
+                    else:  # Reverse scan
+                        file_idx = z * num_channels + (num_channels - c - 1)
+                        
+                    # Load single image
+                    img = tiff.imread(saving_path_tif + '/' + tif_files[file_idx])
+                    channel_stack[z] = img
+                    
+                    # Force garbage collection after each read
+                    gc.collect()
+                
+                # Save this channel
+                tiff.imwrite(save_path + saving_path_tif.split(os.path.sep)[-2] + '_channel_' + str(c) + '.tif',
+                           channel_stack,
+                           imagej=True,
+                           resolution=(1/self.metadata['detector_pixel_size'], 1/self.metadata['detector_pixel_size']),
+                           metadata={'spacing':self.metadata['sample_stage_step_size'],
+                                     'unit':'um', 'axes':'ZYX',
+                                     'PhysicalSizeY':self.metadata['detector_pixel_size'],
+                                     'PhysicalSizeX':self.metadata['detector_pixel_size'],
+                                     'PhysicalSizeYUnit': 'um','PhysicalSizeXUnit': 'um'})
+                
+                # Clear memory
+                del channel_stack
+                gc.collect()
+                
+            self.__logger.info('Post-processing completed successfully')
+            
+        except MemoryError:
+            self.__logger.error('Out of memory during post-processing')
+            raise
+
+
     def startRecording(self, detectorNames, recMode, savename, 
                        saveMode, attrs, saveFormat=SaveFormat.TIFF, 
                        singleMultiDetectorFile=False, singleLapseFile=False,recFrames=None, recTime=None,
-                       save_metadata=None):
+                       save_metadata=None,
+                       post_process=False):
         
         '''
                     self.recordingArgs = {                          # from RecordingController.py 
@@ -269,6 +329,7 @@ class RecordingManager(SignalInterface):
         self.singleMultiDetectorFile = singleMultiDetectorFile
         self.singleLapseFile = singleLapseFile
         self.metadata = save_metadata
+        self.post_process = post_process
         self.__detectorsManager.execOnAll(lambda c: c.flushBuffers(),
                                           condition=lambda c: c.forAcquisition)
         
@@ -313,8 +374,11 @@ class RecordingManager(SignalInterface):
         try:
             self.__logger.info('Snapping')
             images = {}
+            pixel_sizes = {}  # Add this to store pixel sizes
             for detectorName in detectorNames:
                 images[detectorName] = self._getNewFrame(detectorName)
+                # Get pixel size from detector
+                pixel_sizes[detectorName] = self.detectorsManager[detectorName].pixelSizeUm
             if saveFormat:
                 storer = self.__storerMap[saveFormat]
                 if saveMode == SaveMode.Disk or saveMode == SaveMode.DiskAndRAM:
@@ -328,6 +392,7 @@ class RecordingManager(SignalInterface):
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
             if saveMode == SaveMode.Numpy:
+
                 return images            
 
     def _record(self):
@@ -380,7 +445,6 @@ class RecordingManager(SignalInterface):
                     raise ValueError('recFrames must be specified for RecMode.SpecFrames')
                 
                 # make metadata file
-                print('Wrtingng metadata')
                 with open(f'{saving_path_tif}/metadata.json', 'w') as f:
                     print(self.metadata)
                     json.dump(self.metadata, f, indent=4)
@@ -393,9 +457,17 @@ class RecordingManager(SignalInterface):
                         if newFrame is not None:
                             if self.saveFormat == SaveFormat.TIFF:
                                 prefix = f'/image_{currentFrame[detectorName]}.tif'
-                                #tiff.imwrite(saving_path_tif + prefix, newFrame)
-                                with tiff.TiffWriter(saving_path_tif + prefix) as tif:
-                                    tif.write(newFrame)
+
+                                tiff.imwrite(saving_path_tif + prefix, newFrame,
+                                             imagej=True,
+                                             resolution=(1/self.metadata['detector_pixel_size'], 1/self.metadata['detector_pixel_size']),
+                                             metadata={'spacing':self.metadata['sample_stage_step_size'],
+                                                       'unit':'um', 'axes':'YX',
+                                                       'PhysicalSizeY':self.metadata['detector_pixel_size'],
+                                                       'PhysicalSizeX':self.metadata['detector_pixel_size'],
+                                                       'PhysicalSizeYUnit': 'um','PhysicalSizeXUnit': 'um'})
+                                #with tiff.TiffWriter(saving_path_tif + prefix) as tif:
+                                #    tif.write(newFrame)
                                 currentFrame[detectorName] += 1
                                 print(f'Frame {currentFrame[detectorName]}')
                             else:
@@ -411,6 +483,14 @@ class RecordingManager(SignalInterface):
                 self.sigRecordingFrameNumUpdated.emit(0)              
             else:   
                 self.__logger.error('Other recording modes not yet implemented')
+
+            channels = self.metadata['channels']
+            if self.post_process and len(channels) > 1:
+
+                self.__logger.info('Starting post-processing')
+                self.channel_post_process(saving_path_tif, len(channels))
+
+
         finally:
             self.endRecording(emitSignal=True, wait=False)             # self.__recordingManager.endRecording(emitSignal=True, wait=False)
 
@@ -420,4 +500,13 @@ class RecordingManager(SignalInterface):
         newFrames = self.detectorsManager[detectorName].getLastImage()
         newFrames = np.array(newFrames)
         return newFrames
-  
+    '''
+            with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
+
+                tiff.imwrite(path, image,
+                             imagej=True,
+                             resolution=(1/0.345, 1/0.345),
+                             metadata={'unit':'um', 'axes':'YX'}
+                )
+'''
+

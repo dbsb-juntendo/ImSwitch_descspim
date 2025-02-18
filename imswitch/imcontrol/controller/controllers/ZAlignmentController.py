@@ -1,5 +1,33 @@
 from ..basecontrollers import ImConWidgetController
 import time
+from imswitch.imcommon.model import initLogger
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
+
+
+class Worker(QObject):
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+
+    def __init__(self, positionerManagers, operation, axes, positions=None):
+        super().__init__()
+        self.positionerManagers = positionerManagers
+        self.operation = operation
+        self.axes = axes
+        self.positions = positions
+
+    def run(self):
+        try:
+            if self.operation == 'moveSampleCamera':
+                print('moveSampleCamera')
+                for positionerManager, axis, position in zip(self.positionerManagers, self.axes, self.positions):
+                    print(positionerManager, axis, position)
+                    positionerManager.moveAbsolute(axis, position)
+
+            self.finished.emit()
+        except Exception as e:
+            self.error.emit(str(e))
+
+
 
 class ZAlignmentController(ImConWidgetController):
     """ Linked to ZAlignmentWidget."""
@@ -7,6 +35,13 @@ class ZAlignmentController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
+        # set up threads
+        self.thread = None
+        self.worker = None
+        self.thread_running = False
+        
+        self.__logger = initLogger(self, tryInheritParent=True)
+
         # connect the buttons
         self._widget.sigSavePosOneClicked.connect(self.save_pos1)
         self._widget.sigSavePosTwoClicked.connect(self.save_pos2)
@@ -20,7 +55,7 @@ class ZAlignmentController(ImConWidgetController):
     def _getStages(self):
         stages = [(pName, pManager) for pName, pManager in self._master.positionersManager if pManager.forPositioning]
         if len(stages) != 2:
-            self._logger.error('Need two positioners for ZAlignmentWidget.')
+            self.__logger.error('Need two positioners for ZAlignmentWidget.')
             return
         else:
             camera_stage = None
@@ -73,20 +108,75 @@ class ZAlignmentController(ImConWidgetController):
         self._widget.updateResults(factor, sample_zstep, camera_zstep)
         
     def moveToPos1(self):
-        pos1_s, pos1_c = self._widget.getPositions()[0:2]
-        self.moveSampleCamera(pos1_c, pos1_s)
-
-    def moveToPos2(self):
-        pos2_s, pos2_c = self._widget.getPositions()[2:4]
-        self.moveSampleCamera(pos2_c, pos2_s)
-
-    def moveSampleCamera(self, pos_c, pos_s):
         sample_stage, camera_stage = self._getStages()
-        self._master.positionersManager[sample_stage[0]].moveAbsolute(sample_stage[1].axes[0], float(pos_s.split()[1]))       # move to pos1 sample
-        self._commChannel.sigUpdateStagePosition.emit(sample_stage[0], sample_stage[1].axes[0])    #, new_pos)   # new  
-        self._master.positionersManager[camera_stage[0]].moveAbsolute(camera_stage[1].axes[0], float(pos_c.split()[1]))       # move to pos1 camera                                 
+        pos1_s, pos1_c = self._widget.getPositions()[0:2]
+        pos1_s = float(pos1_s.split()[1])
+        pos1_c = float(pos1_c.split()[1])
+        self._runInThread('moveSampleCamera', 
+                          [sample_stage, camera_stage],
+                          [sample_stage[1].axes[0], camera_stage[1].axes[0]],
+                          [pos1_s, pos1_c])
+
+        # update stages in widget
+        self._commChannel.sigUpdateStagePosition.emit(sample_stage[0], sample_stage[1].axes[0])    #, new_pos)   # new
+        self._commChannel.sigUpdateStagePosition.emit(camera_stage[0], camera_stage[1].axes[0])    #, new_pos)
+    
+    def moveToPos2(self):
+        sample_stage, camera_stage = self._getStages()
+        pos2_s, pos2_c = self._widget.getPositions()[2:4]
+        pos2_s = float(pos2_s.split()[1])
+        pos2_c = float(pos2_c.split()[1])
+        self._runInThread('moveSampleCamera', 
+                          [sample_stage, camera_stage],
+                          [sample_stage[1].axes[0], camera_stage[1].axes[0]],
+                          [pos2_s, pos2_c])
+
+        # update stages in widget
+        self._commChannel.sigUpdateStagePosition.emit(sample_stage[0], sample_stage[1].axes[0])    #, new_pos)   # new
         self._commChannel.sigUpdateStagePosition.emit(camera_stage[0], camera_stage[1].axes[0])    #, new_pos)   # new
 
+    def _runInThread(self, operation, positionerManagers, axes, positions):
+        if self.thread_running:
+            self.__logger.error(f"Thread is already running.")
+            return
+
+        self.sample_stage, self.camera_stage = positionerManagers
+        self.thread_running = True
+        #positionerManager = self._master.positionersManager[positionerName]
+        self.thread = QThread()
+        self.worker = Worker([self._master.positionersManager[self.sample_stage[0]], self._master.positionersManager[self.camera_stage[0]]],
+                             operation,
+                             axes,
+                             positions)
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self._onThreadFinished)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.error.connect(self._handleWorkerError)
+        self.worker.finished.connect(lambda: self._commChannel.sigUpdateStagePosition.emit(self.sample_stage[0], axes[0]))
+        self.worker.finished.connect(lambda: self._commChannel.sigUpdateStagePosition.emit(self.camera_stage[0], axes[1]))
+        self.thread.start()
+
+    def _onThreadFinished(self):
+        self.thread_running = False
+        self.thread.quit()
+        self.thread.wait()  # Ensure the thread is finished before deleting
+
+    def _handleWorkerError(self, errorMsg):
+        self.__logger.error(f"Worker error: {errorMsg}")
+    '''
+    def moveSampleCamera(self, pos_c, pos_s):
+        sample_stage, camera_stage = self._getStages()
+        self._runInThread('moveSample', pos_s)
+        self._runInThread('moveCamera', pos_c)
+
+
+        #.moveAbsolute(sample_stage[1].axes[0], float(pos_s.split()[1]))       # move to pos1 sample
+        #self._commChannel.sigUpdateStagePosition.emit(sample_stage[0], sample_stage[1].axes[0])    #, new_pos)   # new  
+        #self._master.positionersManager[camera_stage[0]].moveAbsolute(camera_stage[1].axes[0], float(pos_c.split()[1]))       # move to pos1 camera                                 
+        #self._commChannel.sigUpdateStagePosition.emit(camera_stage[0], camera_stage[1].axes[0])    #, new_pos)   # new
+    '''
     def updateStages(self):
         #TODO
         sample_stage, camera_stage = self._getStages()

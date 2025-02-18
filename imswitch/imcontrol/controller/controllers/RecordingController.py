@@ -61,13 +61,19 @@ class RecordingController(ImConWidgetController):
         self._widget.sigSnapSaveModeChanged.connect(self.snapSaveModeChanged)
 
         self._widget.sigSpecFramesPicked.connect(self.specFrames)
-        self._widget.sigSpecTimePicked.connect(self.specTime)
-        self._widget.sigScanOncePicked.connect(self.recScanOnce)
-        self._widget.sigScanLapsePicked.connect(self.recScanLapse)
-        self._widget.sigUntilStopPicked.connect(self.untilStop)
+        #self._widget.sigSpecTimePicked.connect(self.specTime)
+        #self._widget.sigScanOncePicked.connect(self.recScanOnce)
+        #self._widget.sigScanLapsePicked.connect(self.recScanLapse)
+        #self._widget.sigUntilStopPicked.connect(self.untilStop)
 
         self._widget.sigSnapRequested.connect(self.snap)
         self._widget.sigRecToggled.connect(self.toggleREC)
+
+        # Add connection for post-processing checkbox
+        self._widget.sigPostProcessingChanged.connect(self.setPostProcessing)
+        
+        # Add default value
+        self.postProcessingEnabled = False
 
     def openFolder(self):
         """ Opens current folder in File Explorer. """
@@ -152,7 +158,7 @@ class RecordingController(ImConWidgetController):
         metadata['detector_exposure_time_unit'] = self._master.detectorsManager[detectorName].parameters['exposure'].valueUnits
         metadata['detector_pixel_size'] = self._master.detectorsManager[detectorName].parameters['cameraEffPixelsize'].value
         metadata['detector_pixel_size_unit'] = self._master.detectorsManager[detectorName].parameters['cameraEffPixelsize'].valueUnits
-
+        
         # stages
         for stage in [(pName, pManager) for pName, pManager in self._master.positionersManager if pManager.forPositioning]:
             metadata[stage[0] + '_start_position'] = round(self._master.positionersManager[stage[0]].getPosition(stage[1].axes[0]), 4)
@@ -167,14 +173,19 @@ class RecordingController(ImConWidgetController):
         
         sent_command = self._master.arduinoManager._last_command
         channels = {}
+        print(sent_command)
+        print(lasers)
+        print(filters)
         for i in range(0,len(sent_command), 2):
+            print(i)
             channels[i] = {'laser_name':lasers[sent_command[i+1]]['name'],
                            'laser_wavelength':lasers[sent_command[i+1]]['wavelength'],
                            'laser_power':lasers[sent_command[i+1]]['power'],
                            'laser_unit':lasers[sent_command[i+1]]['unit'],
                            'laser_ttl_line':sent_command[i+1],
                            'emission_filter':filters[sent_command[i]]}
-        metadata['channels'] = channels    
+        metadata['channels'] = channels   
+        metadata['post_process'] = self.postProcessingEnabled
         return metadata
 
     def toggleREC(self, checked):
@@ -213,10 +224,9 @@ class RecordingController(ImConWidgetController):
                           for detectorName in detectorsBeingCaptured},
                 'singleMultiDetectorFile': (len(detectorsBeingCaptured) > 1 and
                                             self._widget.getMultiDetectorSingleFile()),
-                'save_metadata': self.make_metadata()
+                'save_metadata': self.make_metadata(),
+                'post_process': self.postProcessingEnabled
             }
-            print(self.recordingArgs)
-            print('recordingargs')
             if self.recMode == RecMode.SpecFrames:
                 self.recordingArgs['recFrames'] = self._widget.getNumExpositions()
                 self._master.recordingManager.startRecording(**self.recordingArgs)
@@ -282,8 +292,8 @@ class RecordingController(ImConWidgetController):
             self.recording = False
             self.lapseCurrent = -1
             self._widget.updateRecFrameNum(0)
-            self._widget.updateRecTime(0)
-            self._widget.updateRecLapseNum(0)
+            #self._widget.updateRecTime(0)
+            #self._widget.updateRecLapseNum(0)
             self._widget.setRecButtonChecked(False)
             self._widget.setFieldsEnabled(True)
 
@@ -502,6 +512,11 @@ class RecordingController(ImConWidgetController):
     def setRecFolder(self, folderPath: str) -> None:
         """ Sets the folder to save recordings into. """
         self._widget.setRecFolder(folderPath)
+
+    def setPostProcessing(self, enabled):
+        """ Handle post-processing toggle """
+        self.postProcessingEnabled = enabled
+        self.__logger.debug(f"Post-processing {'enabled' if enabled else 'disabled'}")
 
 
 _attrCategory = 'Rec'

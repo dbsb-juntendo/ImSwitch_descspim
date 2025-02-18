@@ -22,9 +22,6 @@ class ArduinoWidget(Widget):
         self.pos2button = guitools.BetterPushButton('Pos: 2')
         self.pos3button = guitools.BetterPushButton('Pos: 3')
         self.pos4button = guitools.BetterPushButton('Pos: 4')
-        #self.setPosLabel = QtWidgets.QLabel('Set Position (1-4): ')
-        #self.setPosEdit = QtWidgets.QLineEdit('1')                      
-        #self.setPosButton = guitools.BetterPushButton('Set')
 
         self.addRowButton = guitools.BetterPushButton('+')
         self.removeRowButton = guitools.BetterPushButton('-')
@@ -48,12 +45,12 @@ class ArduinoWidget(Widget):
         # add table for the channel selection
         self.tableWidget = QtWidgets.QTableWidget()
         self.tableWidget.setColumnCount(3)
-        self.tableWidget.setHorizontalHeaderLabels(['Channel', 'Filter', 'Laser'])
+        self.tableWidget.setHorizontalHeaderLabels(['Channel', 'Laser', 'Filter'])  
         self.tableWidget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
 
         self.grid.addWidget(self.tableWidget, 2, 0, 4, 4)
-        self.filterOptions = ["Filter 1", "Filter 2", "Filter 3", "Filter 4"]
-        self.laserOptions = ["0"]                            
+        self.laserOptions = ["0"]  
+        self.filterOptions = ["Filter 1", "Filter 2", "Filter 3", "Filter 4"]                          
         self.grid.addWidget(self.addRowButton, 2, 4)
         self.grid.addWidget(self.removeRowButton, 3, 4)
         self.grid.addWidget(self.sendToArduino, 4, 4)
@@ -83,15 +80,15 @@ class ArduinoWidget(Widget):
         channelItem = QtWidgets.QTableWidgetItem(f"Channel {self.channelCounter}")
         self.tableWidget.setItem(rowCount, 0, channelItem)
 
-        # Filter column with dropdown menu
-        filterCombo = QtWidgets.QComboBox()
-        filterCombo.addItems(self.filterOptions)
-        self.tableWidget.setCellWidget(rowCount, 1, filterCombo)
-
         # Laser column with dropdown menu
         laserCombo = QtWidgets.QComboBox()
         laserCombo.addItems(self.laserOptions)
-        self.tableWidget.setCellWidget(rowCount, 2, laserCombo)
+        self.tableWidget.setCellWidget(rowCount, 1, laserCombo)
+
+        # Filter column with dropdown menu
+        filterCombo = QtWidgets.QComboBox()
+        filterCombo.addItems(self.filterOptions)
+        self.tableWidget.setCellWidget(rowCount, 2, filterCombo)
 
         # Increment channel counter for next row
         self.channelCounter += 1

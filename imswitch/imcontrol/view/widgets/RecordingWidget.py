@@ -17,10 +17,11 @@ class RecordingWidget(Widget):
     sigSpecFileToggled = QtCore.Signal(bool)  # (enabled)
 
     sigSpecFramesPicked = QtCore.Signal()
-    sigSpecTimePicked = QtCore.Signal()
-    sigScanOncePicked = QtCore.Signal()
-    sigScanLapsePicked = QtCore.Signal()
-    sigUntilStopPicked = QtCore.Signal()
+    sigPostProcessingChanged = QtCore.Signal(bool)  # (enabled)
+    #sigSpecTimePicked = QtCore.Signal()
+    #sigScanOncePicked = QtCore.Signal()
+    #sigScanLapsePicked = QtCore.Signal()
+    #sigUntilStopPicked = QtCore.Signal()
 
     sigsaveFormatChanged = QtCore.Signal()
     sigSnapSaveModeChanged = QtCore.Signal()
@@ -70,21 +71,25 @@ class RecordingWidget(Widget):
         # Number of frames and measurement timing
         modeTitle = QtWidgets.QLabel('<strong>Recording mode</strong>')
         modeTitle.setTextFormat(QtCore.Qt.RichText)
-
+        
+        # number of frames
         self.specifyFrames = QtWidgets.QRadioButton('Number of frames')
         self.currentFrame = QtWidgets.QLabel('0 /')
         self.currentFrame.setAlignment((QtCore.Qt.AlignRight |
                                         QtCore.Qt.AlignVCenter))
         self.numExpositionsEdit = QtWidgets.QLineEdit('10')
-
+        '''
+        # time
         self.specifyTime = QtWidgets.QRadioButton('Time (s)')
         self.currentTime = QtWidgets.QLabel('0 / ')
         self.currentTime.setAlignment((QtCore.Qt.AlignRight |
                                        QtCore.Qt.AlignVCenter))
         self.timeToRec = QtWidgets.QLineEdit('1')
 
+        # scan once
         self.recScanOnceBtn = QtWidgets.QRadioButton('Scan once')
 
+        # time-lapse scan
         self.recScanLapseBtn = QtWidgets.QRadioButton('Time-lapse scan')
         self.currentLapse = QtWidgets.QLabel('0 / ')
         self.timeLapseEdit = QtWidgets.QLineEdit('5')
@@ -92,8 +97,13 @@ class RecordingWidget(Widget):
         self.freqEdit = QtWidgets.QLineEdit('0')
         self.singleFileLapseBox = QtWidgets.QCheckBox('Save all scans in a single file')
 
+        # run until STOP
         self.untilSTOPbtn = QtWidgets.QRadioButton('Run until STOP')
-
+        '''
+        # add post-processing (apply channels to interleaved images) checkbox
+        self.postProcessingCheckBox = QtWidgets.QCheckBox('Apply channels to interleaved images.')
+        
+        # save format
         self.saveFormatLabel = QtWidgets.QLabel('<strong>File format:</strong>')
         self.saveFormatList = QtWidgets.QComboBox()
         self.saveFormatList.addItems(['TIFF'])#,'HDF5','ZARR'])     no implementation yet
@@ -153,6 +163,9 @@ class RecordingWidget(Widget):
         recGrid.addWidget(self.numExpositionsEdit, gridRow, 2)
         gridRow += 1
 
+        recGrid.addWidget(self.postProcessingCheckBox, gridRow, 0, 1, 5)
+        gridRow += 1
+        '''
         recGrid.addWidget(self.specifyTime, gridRow, 0, 1, 5)
         recGrid.addWidget(self.currentTime, gridRow, 1)
         recGrid.addWidget(self.timeToRec, gridRow, 2)
@@ -172,7 +185,7 @@ class RecordingWidget(Widget):
 
         recGrid.addWidget(self.untilSTOPbtn, gridRow, 0, 1, -1)
         gridRow += 1
-
+        '''
         recGrid.addWidget(self.saveFormatLabel, gridRow, 0)
         recGrid.addWidget(self.saveFormatList, gridRow, 1, 1, -1)
         gridRow += 1
@@ -195,7 +208,8 @@ class RecordingWidget(Widget):
         #TODO change that number of frames is default setting
         self.filenameEdit.setEnabled(False)
         self.specifyFrames.setChecked(True)
-        self.untilSTOPbtn.setChecked(False)
+        self.postProcessingCheckBox.setChecked(False)
+        #self.untilSTOPbtn.setChecked(False)
         
         # Connect signals
         self.detectorModeList.currentIndexChanged.connect(self.sigDetectorModeChanged)
@@ -204,10 +218,11 @@ class RecordingWidget(Widget):
         self.specifyfile.toggled.connect(self.sigSpecFileToggled)
 
         self.specifyFrames.clicked.connect(self.sigSpecFramesPicked)
-        self.specifyTime.clicked.connect(self.sigSpecTimePicked)
-        self.recScanOnceBtn.clicked.connect(self.sigScanOncePicked)
-        self.recScanLapseBtn.clicked.connect(self.sigScanLapsePicked)
-        self.untilSTOPbtn.clicked.connect(self.sigUntilStopPicked)
+        self.postProcessingCheckBox.toggled.connect(self.sigPostProcessingChanged)
+        #self.specifyTime.clicked.connect(self.sigSpecTimePicked)
+        #self.recScanOnceBtn.clicked.connect(self.sigScanOncePicked)
+        #self.recScanLapseBtn.clicked.connect(self.sigScanLapsePicked)
+        #self.untilSTOPbtn.clicked.connect(self.sigUntilStopPicked)
 
         self.saveFormatList.currentIndexChanged.connect(self.sigsaveFormatChanged)
         self.snapSaveModeList.currentIndexChanged.connect(self.sigSnapSaveModeChanged)
@@ -332,7 +347,11 @@ class RecordingWidget(Widget):
 
     def checkSpecFrames(self):
         self.specifyFrames.setChecked(True)
+    
+    def checkPostProcessing(self):
+        self.postProcessingCheckBox.setChecked(True)
 
+    '''
     def checkSpecTime(self):
         self.specifyTime.setChecked(True)
 
@@ -344,16 +363,17 @@ class RecordingWidget(Widget):
 
     def checkUntilStop(self):
         self.untilSTOPbtn.setChecked(True)
+    '''
 
     def setFieldsEnabled(self, enabled):
         self.recGridContainer.setEnabled(enabled)
 
     def setEnabledParams(self, specFrames=False, specTime=False, scanLapse=False):
         self.numExpositionsEdit.setEnabled(specFrames)
-        self.timeToRec.setEnabled(specTime)
-        self.timeLapseEdit.setEnabled(scanLapse)
-        self.freqEdit.setEnabled(scanLapse)
-        self.singleFileLapseBox.setEnabled(scanLapse)
+        #self.timeToRec.setEnabled(specTime)
+        #self.timeLapseEdit.setEnabled(scanLapse)
+        #self.freqEdit.setEnabled(scanLapse)
+        #self.singleFileLapseBox.setEnabled(scanLapse)
 
     def setRecButtonChecked(self, checked):
         self.recButton.setChecked(checked)
@@ -376,11 +396,11 @@ class RecordingWidget(Widget):
     def updateRecFrameNum(self, recFrameNum):
         self.currentFrame.setText(str(recFrameNum) + ' /')
 
-    def updateRecTime(self, recTime):
-        self.currentTime.setText(str(recTime) + ' /')
+    #def updateRecTime(self, recTime):
+    #    self.currentTime.setText(str(recTime) + ' /')
 
-    def updateRecLapseNum(self, lapseNum):
-        self.currentLapse.setText(str(lapseNum) + ' /')
+    #def updateRecLapseNum(self, lapseNum):
+    #    self.currentLapse.setText(str(lapseNum) + ' /')
 
     @shortcut('Ctrl+R', "Record")
     def toggleRecButton(self):
