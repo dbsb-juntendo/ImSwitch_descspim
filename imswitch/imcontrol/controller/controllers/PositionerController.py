@@ -33,6 +33,13 @@ class Worker(QObject):
         except Exception as e:
             self.error.emit(str(e))
 
+    '''
+    # trigger stuff
+    def set_IO_params(self, positionerName, axis):
+        io_params = self._widget.getIOparams(positionerName, axis)
+        self.__logger.debug(f"Setting IO params for {positionerName}, axis {axis}, trig1_mode {io_params[0]}, trig2_mode {io_params[1]}, hardcoding polarity HIGH.")
+        self._master.positionersManager[positionerName].set_triggerIOconfig(io_params)
+    '''
 
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
@@ -44,7 +51,8 @@ class PositionerController(ImConWidgetController):
         self.thread = None
         self.worker = None
         self.thread_running = False
-        
+        self.trigger_options = self._widget.trigger_options
+
         self.__logger = initLogger(self, tryInheritParent=True)
 
         # Set up positioners
@@ -53,8 +61,13 @@ class PositionerController(ImConWidgetController):
             self._widget.addPositioner(pName, pManager.axes, speed)
             axis = pManager.axes[0]                                                     # on this KDC101 stage is only one axis
             self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
+            # set IO params
+            self._widget.setIOparams1(pName, axis, int(self.trigger_options[0][0]))
+            self._widget.setIOparams2(pName, axis, int(self.trigger_options[0][0]))
             if speed:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
+
+
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
@@ -70,8 +83,8 @@ class PositionerController(ImConWidgetController):
         # absolute movement
         self._widget.sigStepAbsoluteClicked.connect(self.moveAbsolute)
         # trigIO params
-        #self._widget.sigsetIOparams1Clicked.connect() # what to do here
-        self._widget.sigSetIOparamsClicked.connect(self.set_IO_params) # what to do here
+        self._widget.sigsetIOparams1DropDown.connect(self.set_IO_params) 
+        self._widget.sigsetIOparams2DropDown.connect(self.set_IO_params)
         # relative movement setting io channel 1
         self._widget.sigsetRelDistanceClicked.connect(self.set_relative_distance)
 
@@ -188,12 +201,19 @@ class PositionerController(ImConWidgetController):
         self.__logger.debug(f"Move {positionerZ}, axis Z, dist {str(z)}")
         #self.move(self.getPositionerNames[2], 'Z', z)
 
+
+    def set_IO_params(self, positionerName, axis):
+        io_param1 = self._widget.getIOparams1(positionerName, axis)
+        io_param2 = self._widget.getIOparams2(positionerName, axis)
+        self._master.positionersManager[positionerName].set_triggerIOconfig([io_param1, io_param2])
+
+    '''
     # trigger stuff
     def set_IO_params(self, positionerName, axis):
         io_params = self._widget.getIOparams(positionerName, axis)
         self.__logger.debug(f"Setting IO params for {positionerName}, axis {axis}, trig1_mode {io_params[0]}, trig2_mode {io_params[1]}, hardcoding polarity HIGH.")
         self._master.positionersManager[positionerName].set_triggerIOconfig(io_params)
-
+    '''
 
     def set_relative_distance(self, positionerName, axis):
         rel_distance = self._widget.getRelDist(positionerName, axis)

@@ -44,6 +44,10 @@ Further documentation is available at [imswitch.readthedocs.io](https://imswitch
 
 ## TODO
 
+- rename channel tick box
+- dropdown for iomode on 
+- dropdown for trigger mode camera
+
 - change position to actual filter in widget
 - remove operation mode and modulation mode on laser and synchronize this with the record button
 - display max value while live

@@ -15,7 +15,10 @@ class PositionerWidget(Widget):
 
     #sigsetIOparams1Clicked = QtCore.Signal(str, str)  # (io_params)
     sigsetRelDistanceClicked = QtCore.Signal(str, str)  # (rel_distance)
-    sigSetIOparamsClicked = QtCore.Signal(str, str)  # (io_params)
+    #sigSetIOparamsClicked = QtCore.Signal(str, str)  # (io_params)
+    sigsetIOparams1DropDown = QtCore.Signal(str, str)        # dropdown menu iomode 1
+    sigsetIOparams2DropDown = QtCore.Signal(str, str)        # dropdown menu iomode 2
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -23,6 +26,9 @@ class PositionerWidget(Widget):
         self.pars = {}
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
+        self.trigger_options = ['0 - Disabled',            # there are more options, the entire list is
+                                '2 - IN - Relative Move',  # can be found when using kinesis software
+                                '11 - OUT - In Motion']    # under settings - advanced - IO options
 
     def addPositioner(self, positionerName, axes, speed):
         for i in range(len(axes)):
@@ -45,16 +51,20 @@ class PositionerWidget(Widget):
             self.pars['AbsolutePosButton' + parNameSuffix] = guitools.BetterPushButton('Go!')
             
             # trigger modes 
-            self.pars['trig1_mode' + parNameSuffix] = QtWidgets.QLineEdit('0')                  #TODO change to initial
-            #self.pars['set_trig1_mode' + parNameSuffix] = guitools.BetterPushButton('SET')
-            self.pars['rel_distance1' + parNameSuffix] = QtWidgets.QLineEdit('0')               #TODO change to initial
+            self.pars['trig1_mode_label' + parNameSuffix] = QtWidgets.QLabel('IO1_mode: ')
+            self.pars['trig1_mode' + parNameSuffix] = QtWidgets.QComboBox()
+            self.pars['trig1_mode' + parNameSuffix].addItems(self.trigger_options)
+
+            self.pars['rel_distance1' + parNameSuffix] = QtWidgets.QLineEdit('0')               
             self.pars['rel_distance1_unit' + parNameSuffix] = QtWidgets.QLabel(' µm')
             self.pars['set_rel_distance1' + parNameSuffix] = guitools.BetterPushButton('SET')
+ 
+            self.pars['trig2_mode_label' + parNameSuffix] = QtWidgets.QLabel('IO2_mode: ')
+            self.pars['trig2_mode' + parNameSuffix] = QtWidgets.QComboBox()
+            self.pars['trig2_mode' + parNameSuffix].addItems(self.trigger_options)          
 
-            self.pars['trig2_mode' + parNameSuffix] = QtWidgets.QLineEdit('0')                  #TODO change to initial
-            self.pars['set_trig2_mode' + parNameSuffix] = guitools.BetterPushButton('SET')
-            #self.pars['rel_distance2' + parNameSuffix] = QtWidgets.QLineEdit('0')
-            #self.pars['rel_distance2_unit' + parNameSuffix] = QtWidgets.QLabel(' µm')
+            #self.pars['set_trig2_mode' + parNameSuffix] = guitools.BetterPushButton('SET')
+
 
             # row 1
             self.grid.addWidget(self.pars['Label' + parNameSuffix], 3*self.numPositioners, 0)
@@ -71,16 +81,25 @@ class PositionerWidget(Widget):
             self.grid.addWidget(self.pars['AbsolutePosButton' + parNameSuffix], 3*self.numPositioners+1, 2)
 
             # row 3
+            self.grid.addWidget(self.pars['trig1_mode_label' + parNameSuffix], 3*self.numPositioners+2, 0)
+            self.grid.addWidget(self.pars['trig1_mode' + parNameSuffix], 3*self.numPositioners+2, 1)
+            self.grid.addWidget(self.pars['rel_distance1_unit' + parNameSuffix], 3*self.numPositioners+2, 2)
+            self.grid.addWidget(self.pars['rel_distance1' + parNameSuffix], 3*self.numPositioners+2, 3)
+            self.grid.addWidget(self.pars['set_rel_distance1' + parNameSuffix], 3*self.numPositioners+2, 4)
+            self.grid.addWidget(self.pars['trig2_mode_label' + parNameSuffix], 3*self.numPositioners+2, 5)
+            self.grid.addWidget(self.pars['trig2_mode' + parNameSuffix], 3*self.numPositioners+2, 6)
+
+            '''
             self.grid.addWidget(QtWidgets.QLabel('IO1_mode: '), 3*self.numPositioners+2, 0)
             self.grid.addWidget(self.pars['trig1_mode' + parNameSuffix], 3*self.numPositioners+2, 1)
-            #self.grid.addWidget(self.pars['set_trig1_mode' + parNameSuffix], 2*self.numPositioners+2, 2)
             self.grid.addWidget(QtWidgets.QLabel('Rel IO1 move: '), 3*self.numPositioners+2, 2)
             self.grid.addWidget(self.pars['rel_distance1' + parNameSuffix], 3*self.numPositioners+2, 3)
             self.grid.addWidget(self.pars['rel_distance1_unit' + parNameSuffix], 3*self.numPositioners+2, 4)
             self.grid.addWidget(self.pars['set_rel_distance1' + parNameSuffix], 3*self.numPositioners+2, 5)
             self.grid.addWidget(QtWidgets.QLabel('IO2_mode: '), 3*self.numPositioners+2, 6)
             self.grid.addWidget(self.pars['trig2_mode' + parNameSuffix], 3*self.numPositioners+2, 7)
-            self.grid.addWidget(self.pars['set_trig2_mode' + parNameSuffix], 3*self.numPositioners+2, 8)
+            #self.grid.addWidget(self.pars['set_trig2_mode' + parNameSuffix], 3*self.numPositioners+2, 8)
+            '''
 
             # Connect signals
             self.pars['UpButton' + parNameSuffix].clicked.connect(
@@ -97,19 +116,27 @@ class PositionerWidget(Widget):
             self.pars['AbsolutePosButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepAbsoluteClicked.emit(positionerName, axis)
             )
-            
-            # set button trig1
-            #self.pars['set_trig1_mode' + parNameSuffix].clicked.connect(
-            #    lambda *args, axis=axis: self.sigsetIOparams1Clicked.emit(positionerName, axis)
-            #)
+
             # set button relmove 1
             self.pars['set_rel_distance1' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigsetRelDistanceClicked.emit(positionerName, axis)
             )
+
+            # set dropdown menu iomode 1
+            self.pars['trig1_mode' + parNameSuffix].currentIndexChanged.connect(
+                lambda *args, axis=axis: self.sigsetIOparams1DropDown.emit(positionerName, axis)
+            )
+
+            # set dropdown menu iomode 2
+            self.pars['trig2_mode' + parNameSuffix].currentIndexChanged.connect(
+                lambda *args, axis=axis: self.sigsetIOparams2DropDown.emit(positionerName, axis)
+            )
+            '''
             # set button trig2
             self.pars['set_trig2_mode' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigSetIOparamsClicked.emit(positionerName, axis)
             )
+            '''
 
             if speed:
                 self.pars['Speed'] = QtWidgets.QLabel(f'<strong>{0:.2f} µm/s</strong>')
@@ -167,10 +194,23 @@ class PositionerWidget(Widget):
         self.pars['Speed' + parNameSuffix].setText(f'<strong>{speed:.2f} µm/s</strong>')
     
     # trigger stuff
+    '''
     def getIOparams(self, positionerName, axis):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         return (int(self.pars['trig1_mode' + parNameSuffix].text()), int(self.pars['trig2_mode' + parNameSuffix].text()))
-    
+    '''
+    def getIOparams1(self, positionerName, axis):
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        ioparams1 = int(self.pars['trig1_mode' + parNameSuffix].currentIndex())
+        ioparams1 = self.trigger_options[ioparams1].split()[0]
+        return ioparams1
+
+    def getIOparams2(self, positionerName, axis):
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        ioparams2 = int(self.pars['trig2_mode' + parNameSuffix].currentIndex())
+        ioparams2 = self.trigger_options[ioparams2].split()[0]
+        return ioparams2
+
     def getRelDist(self, positionerName, axis):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         return float(self.pars['rel_distance1' + parNameSuffix].text())
@@ -182,6 +222,13 @@ class PositionerWidget(Widget):
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'
 
+    def setIOparams1(self, positionerName, axis, ioparams1):
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        self.pars['trig1_mode' + parNameSuffix].setCurrentIndex(ioparams1)
+
+    def setIOparams2(self, positionerName, axis, ioparams2):
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        self.pars['trig2_mode' + parNameSuffix].setCurrentIndex(ioparams2)
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
