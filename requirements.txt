@@ -13,6 +13,7 @@ lantzdev==0.5.2
 luddite==1.0.4
 matplotlib==3.8.4
 napari==0.4.19.post1
+natsort==8.4.0
 nidaqmx==1.0.1
 numpy==1.26.4
 ome_zarr==0.8.3

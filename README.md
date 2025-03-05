@@ -6,11 +6,21 @@
 
 ## Installation
 
-Create a conda environment with python=3.10 and install imswitch with ``pip install -e . `` while in the Imswitch_descspim folder. Then, install the requirements with `pip install -r requirements.txt` and install the thorlabs SDK for the thorlabs scientific camera with ``pip install -e ./thorlabs_tsi_sdk-0.0.8/``. Lastly, clone the repository ``git clone https://gitlab.com/ptapping/thorlabs-apt-device.git`` and install with ``pip install --user ./thorlabs-apt-device`` for the correct KDC101 controller driver (may not be needed). 
+- Create conda environment ``conda create -n <name_environment> python=3.10``
+- Activate conda environment ``conda activate <name_environment>``
+- Situated in a folder where ImSwitch should be installed clone the repository ``git clone https://github.com/dbsb-juntendo/ImSwitch_descspim.git``
+- Move into the cloned repository ``cd ./ImSwitch_descspim/``
+- Install ImSwitch for descSPIM ``pip install -e .``
+- Install all the requirements ``pip install -r requirements.txt``
+- Download the thorcam sdk from https://www.thorlabs.us/software_pages/ViewSoftwarePage.cfm?Code=ThorCam
+- Unzip thorcam sdk and move into ImSwitch folder (here from downloads folder) ``Expand-Archive -Path C:\Users\alm\Downloads\Scientific_Camera_Interfaces_Windows-2.1.zip .``
+- Unzip thorcam python package and move to ImSwitch folder``Expand-Archive -Path '.\Scientific Camera Interfaces\SDK\Python Toolkit\thorlabs_tsi_camera_python_sdk_package.zip' .``
+- Move dlls to imswitch/imcontrol/.. (dlls are used by imswitch/imcontrol/model/interfaces/thorcamscicamera.py)``Move-Item -Path '.\Scientific Camera Interfaces\SDK\DotNet Toolkit\dlls\Managed_64_lib\' -Destination .\imswitch\imcontrol\model\interfaces\thorlabs_sdk_dll``
+- Install thorcam python package ``pip install -e .\thorlabs_tsi_sdk-0.0.8\.``
 
 ## Prepare configuration file
 
-During the installation, the folder `/Users/Documents/ImSwitchConfig/` in the user's Documents is created, where some pre-made configuration files related to basic imswitch are stored in the subfolder `/imcontrol_setups/`. Copy the configuration files `descspim.json` and `descspim_complete.json` from this repository into the subfolder and, using them, create your own configuration file that matches the laser/camera setup that matches your descspim version. Documentation from the initial imswitch for defining a configuration file can be found [here](https://imswitch.readthedocs.io/en/stable/imcontrol-setups.html). For ImSwitch_descspim, a few device adapters have been added/improved:
+During the installation, the folder `/Users/Documents/ImSwitchConfig/` in the user's Documents is created, where some pre-made configuration files related to basic imswitch are stored in the subfolder `/imcontrol_setups/`. Copy the configuration file `descspim_complete.json` from this repository into the subfolder and match the COM ports of the hardware devices to the ones in the config file. Documentation from the initial imswitch for defining a configuration file can be found [here](https://imswitch.readthedocs.io/en/stable/imcontrol-setups.html). For ImSwitch_descspim, a few device adapters have been added/improved:
 
 - Thorlabs Kiralux scmos camera
 - Thorlabs KDC101 stage controller
@@ -24,9 +34,21 @@ Additionally, widgets have been added:
 - ZAlignment widget for calculating relative stage movements of camera and sample stage
 - Arduino widget for controlling the ELL9 filter slider and selecting color channels
 
-## Documentation
+## User guide
 
-Further documentation is available at [imswitch.readthedocs.io](https://imswitch.readthedocs.io). This repository is still very much under development!
+Start Imswitch from command line while in the <name_environment> with command ``imswitch``. The GUI of ImSwitch can be adapted by the user by dragging the widgets to the desired location. 
+
+### Detector settings
+
+During live mode the operation mode of the detector should be set to 0 (under detector settings). For a recording, set the operation mode to 1.
+
+### Stage settings
+
+For acquiring a 3D-stack, use the Z-Alignment tool widget to set the relative move distances of sample stage and camera stage. First, align the sample at the start position of the stack, fine alignment can be done by moving the camera stage in 5 um steps and save this first position in the Z alignment tool. Then move the sample stage by 500 or 1000 um through the sample (+) and align by using the camera stage. A rough estimate is that per mm traveled by the sample, the camera stage needs to move approximately 300 um. After the camera is aligned, save the second position in the z alignment tool. Select a rough distance (default 1.0 um) and press calculate to find the best fitting relative movements. After that, press Update stages to configure the devices. In the positioner widget, set IO1_mode to ``2 - IN - Relative Move`` for both stages and IO2_mode to ``11 - In Motion`` for the sample stage. 
+
+### Laser settings
+
+For a recording, turn on digital modulation for the laser that is supposed to be used.
 
 ## Notes
 
@@ -60,6 +82,5 @@ Further documentation is available at [imswitch.readthedocs.io](https://imswitch
 - line widget with plot with psf wwidget
 - line widget similar to fiji
 - update stages after recording finished
-- change window layout for when using a potrait style screen (can be done manually in the gui for now)
 
 

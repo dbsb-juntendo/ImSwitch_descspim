@@ -10,9 +10,10 @@ import collections
 import threading
 # this is called first and then the manager is called
 
-# inspiration  https://github.com/nanophotonics/nplab/blob/master/nplab/instrument/camera/thorlabs/kiralux.py
+
 def configure_path():
-    absolute_path_to_dlls = str(pathlib.Path(__file__).resolve().parent)+"\\thorlabs_tsi_sdk\\dll\\"
+    #absolute_path_to_dlls = str(pathlib.Path(__file__).resolve().parent)+"\\thorlabs_tsi_sdk\\dll\\"
+    absolute_path_to_dlls = str(pathlib.Path(__file__).resolve().parent)+"\\thorlabs_sdk_dll\\"
     os.environ['PATH'] = absolute_path_to_dlls + os.pathsep + os.environ['PATH']
 
     try:

@@ -1,0 +1,108 @@
+{
+  "detectors": {
+    "thorlabscam": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "ThorCamSciManager",
+      "managerProperties": {
+        "cameraListIndex": 0,
+        "thorcamsci": {
+          "exposure": 50,
+          "operation_mode": 0,
+          "cameraEffPixelsize": 0.345
+          }
+      },
+      "forAcquisition": true
+    }
+  },
+  "positioners": {
+    "sample_stage": {
+        "managerName": "KDC101positionerManager",
+        "managerProperties": {
+            "port": "COM12",
+            "units": "mm",
+            "posConvFac": 34554.96,
+            "velConvFac": 772981.3692,
+            "accConvFac": 263.8443072, 
+            "initialSpeed" : 100
+        },
+        "axes": [
+          "X"
+      ],
+      "isPositiveDirection": true,
+      "forPositioning": true,
+      "forScanning": true
+    },
+    "camera_stage": {
+      "managerName": "KDC101positionerManager",
+      "managerProperties": {
+          "port": "COM13",
+          "units": "mm",
+          "posConvFac": 34554.96,
+          "velConvFac": 772981.3692,
+          "accConvFac": 263.8443072, 
+          "initialSpeed" : 100
+      },
+      "axes": [
+        "Y"
+    ],
+    "isPositiveDirection": true,
+    "forPositioning": true,
+    "forScanning": true
+   }
+  },
+  "lasers": {
+    "cobolt 06-MLD 488": {
+      "managerName": "PyCobolt0601MLDLaserManager",
+      "managerProperties": {
+        "port": "COM4",
+        "digitalLine": "Arduino/TTL8"
+      },
+      "valueRangeMin": 0,
+      "valueRangeMax": 200,
+      "wavelength": 488,
+      "valueRangeStep": 1.0
+    },
+    "cobolt 05 Jive AOTF 561": {
+      "managerName":"PyAAOPTOLaserManager",
+      "managerProperties": {
+        "port": "COM8",
+        "digitalLine": "Arduino/TTL5",
+        "channel": 1,
+        "frequency": 108.623
+      },
+      "valueRangeMin": 0,
+      "valueRangeMax": 22,
+      "wavelength": 561,
+      "valueRangeStep": 0.1
+    },
+    "cobolt 06-DPL 594": {
+      "managerName": "PyCobolt0601LaserManager",
+      "managerProperties": {
+        "port": "COM11",
+        "digitalLine": "Arduino/TTL2"
+      },
+      "valueRangeMin": 0,
+      "valueRangeMax": 200,
+      "wavelength": 594,
+      "valueRangeStep": 1.0
+    }
+  },
+  "arduino":{
+    "port": "COM3",
+    "baudrate": 9600,
+    "emissionFilters": {"1":"525/50","2":"610/70","3":"705/72","4":""}
+  },
+    "availableWidgets": [
+      "Settings",
+      "View",
+      "Recording",
+      "Image",
+      "Laser",
+      "Positioner",
+      "ZAlignment",
+      "Arduino"
+    ]
+}
+  
+  
