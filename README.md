@@ -16,7 +16,7 @@
 - Unzip thorcam sdk and move into ImSwitch folder (here from downloads folder) ``Expand-Archive -Path C:\Users\alm\Downloads\Scientific_Camera_Interfaces_Windows-2.1.zip .``
 - Unzip thorcam python package and move to ImSwitch folder``Expand-Archive -Path '.\Scientific Camera Interfaces\SDK\Python Toolkit\thorlabs_tsi_camera_python_sdk_package.zip' .``
 - Move dlls to imswitch/imcontrol/.. (dlls are used by imswitch/imcontrol/model/interfaces/thorcamscicamera.py)``Move-Item -Path '.\Scientific Camera Interfaces\SDK\DotNet Toolkit\dlls\Managed_64_lib\' -Destination .\imswitch\imcontrol\model\interfaces\thorlabs_sdk_dll``
-- Install thorcam python package ``pip install -e .\thorlabs_tsi_sdk-0.0.8\.``
+- Install thorcam python package ``pip install -e .\thorlabs_tsi_sdk-0.0.8\ .``
 
 ## Prepare configuration file
 
