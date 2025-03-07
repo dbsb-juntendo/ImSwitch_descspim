@@ -50,6 +50,13 @@ For acquiring a 3D-stack, use the Z-Alignment tool widget to set the relative mo
 
 For a recording, turn on digital modulation for the laser that is supposed to be used.
 
+## Arduino Guide
+
+- Open VScode (with PlatformIO installed) and select File > Open Folder...
+- Choose the descspim_arduino_code/ folder in the github folder
+- The source code for the arduino device can be found in src/
+- After changes have been made, source code can be sent to the arduino by pressing the arrow in the bottom left corner of the VScode window (PlatformIO: Upload)
+
 ## Notes
 
 - When using a cobolt DPL laser, the power in mW is converted to mA and sent to the laser, as the set_modulation_power() function is not implemented
