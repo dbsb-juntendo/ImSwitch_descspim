@@ -2,6 +2,8 @@
 
 ``ImSwitch`` is a software solution in Python that aims at generalizing microscope control by using an architecture based on the model-view-presenter (MVP) to provide a solution for flexible control of multiple microscope modalities. In this repository, ImSwitch was adapted to be used for the descSPIM open-source microscopy platform.
 
+![](https://github.com/dbsb-juntendo/ImSwitch_descspim/blob/master/testing_scripts/fig3_11_imswitch.png)
+
 ## Installation
 
 - Create conda environment ``conda create -n <name_environment> python=3.10``
